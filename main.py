@@ -2,6 +2,7 @@ import time
 import sys
 import curses
 import constants as cst
+import movement as mv
 
 
 def rainbow_wave(stdscr, text, y_pos, init_x, colors, color_offset):
@@ -31,10 +32,15 @@ def main(stdscr):
     playgrid_x_mar = dw // 10
     playgrid_x_w = int(dw - (playgrid_x_mar * 2))
     playgrid_x_spc = playgrid_x_w // (cst.PLAYGRID_W - 1)
+    hero_abs_x = playgrid_x_mar + (cst.HERO_REL_X * playgrid_x_spc)
 
+    # init game loop
+    # init vars
+    hero_y = cst.PLAYGRID_YC
+    legal_mv = 0
     color_offset = 1
 
-    # init print
+    # init title
     rainbow_wave_ml(stdscr,
                     cst.TITLE_L,
                     dheady,
@@ -42,18 +48,17 @@ def main(stdscr):
                     cst.RAINBOW_L,
                     color_offset)
     color_offset = (color_offset + 1) % len(cst.RAINBOW_L)
-
-    # print track
+    # init draw track
     for nl in range(cst.PLAYGRID_H):
         for nc in range(cst.PLAYGRID_W):
-            stdscr.addch(cst.TITLE_H + cst.OFFSET_FROM_TITLE + nl,
+            stdscr.addch(cst.PLAYGRID_Y_OFFSET + nl,
                          playgrid_x_mar + (nc * playgrid_x_spc),
                          cst.GRIDCH)
-
-    # print hero
-    stdscr.addch(cst.TITLE_H + cst.OFFSET_FROM_TITLE + (cst.PLAYGRID_H // 2),
-                 playgrid_x_mar + (cst.HERO_X * playgrid_x_spc),
+    # init draw hero
+    stdscr.addch(hero_y,
+                 hero_abs_x,
                  cst.HEROCH, curses.color_pair(1) | curses.A_BOLD)
+
     # game loop
     while True:
         # usr input
@@ -61,10 +66,10 @@ def main(stdscr):
         match c:
             case 113:  # q
                 break
-            case 259:  # arrow up
-                pass
             case 258:  # arrow down
-                pass
+                legal_mv, hero_y, prev_y = mv.move_bound_y(hero_y, 1)
+            case 259:  # arrow up
+                legal_mv, hero_y, prev_y = mv.move_bound_y(hero_y, 0)
             case _:
                 pass
 
@@ -75,6 +80,17 @@ def main(stdscr):
                         cst.RAINBOW_L,
                         color_offset)
         color_offset = (color_offset + 1) % len(cst.RAINBOW_L)
+
+        stdscr.addch(hero_y,
+                     hero_abs_x,
+                     cst.HEROCH,
+                     curses.color_pair(1) | curses.A_BOLD)
+
+        if legal_mv:  # clear prev position
+            stdscr.addch(prev_y,
+                         hero_abs_x,
+                         cst.GRIDCH)
+            legal_mv = 0  # block until next time
 
         # print track
         # for nl in range(cst.PLAYGRID_H):
