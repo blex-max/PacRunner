@@ -28,7 +28,6 @@ def main(stdscr):
     for i, color in enumerate(cst.RAINBOW_L):
         curses.init_pair(i + 1, color, -1)  # -1 for default background
     dh, dw = stdscr.getmaxyx()
-    dheady = 0
     playgrid_x_mar = dw // 10
     playgrid_x_w = int(dw - (playgrid_x_mar * 2))
     playgrid_x_spc = playgrid_x_w // (cst.PLAYGRID_W - 1)
@@ -40,10 +39,10 @@ def main(stdscr):
     legal_mv = 0
     color_offset = 1
 
-    # init title
+    # init draw title
     rainbow_wave_ml(stdscr,
                     cst.TITLE_L,
-                    dheady,
+                    cst.TITLE_Y_OFFSET,
                     ((dw // 2) - (cst.TITLE_W // 2)),
                     cst.RAINBOW_L,
                     color_offset)
@@ -61,6 +60,15 @@ def main(stdscr):
 
     # game loop
     while True:
+        # strobe title
+        rainbow_wave_ml(stdscr,
+                        cst.TITLE_L,
+                        cst.TITLE_Y_OFFSET,
+                        ((dw // 2) - (cst.TITLE_W // 2)),
+                        cst.RAINBOW_L,
+                        color_offset)
+        color_offset = (color_offset + 1) % len(cst.RAINBOW_L)
+
         # usr input
         c = stdscr.getch()
         match c:
@@ -73,31 +81,16 @@ def main(stdscr):
             case _:
                 pass
 
-        rainbow_wave_ml(stdscr,
-                        cst.TITLE_L,
-                        dheady,
-                        ((dw // 2) - (cst.TITLE_W // 2)),
-                        cst.RAINBOW_L,
-                        color_offset)
-        color_offset = (color_offset + 1) % len(cst.RAINBOW_L)
-
+        # draw hero
         stdscr.addch(hero_y,
                      hero_abs_x,
                      cst.HEROCH,
                      curses.color_pair(1) | curses.A_BOLD)
-
         if legal_mv:  # clear prev position
             stdscr.addch(prev_y,
                          hero_abs_x,
                          cst.GRIDCH)
             legal_mv = 0  # block until next time
-
-        # print track
-        # for nl in range(cst.PLAYGRID_H):
-        #     for nc in range(cst.PLAYGRID_W):
-        #         stdscr.addch(cst.TITLE_H + cst.OFFSET_FROM_TITLE + nl,
-        #                      playgrid_x_mar + (nc * playgrid_x_spc),
-        #                      '.')
 
         stdscr.refresh()
         time.sleep(0.05)

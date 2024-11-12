@@ -1,10 +1,6 @@
 import utility as u
 import curses
 
-# hero_open = 'C'
-# hero_open_alt = '◔'
-# hero_closed = '◯'
-
 TITLE = r"""
 __________                __________                                       ._.
 \______   \_____     ____ \______   \ __ __   ____    ____    ____ _______ | |
@@ -38,13 +34,20 @@ __________                              __________ .__ .__   .__  ._.
 HEROCH = 'C'
 GRIDCH = '·'
 
-RAINBOW_L = [curses.COLOR_RED, curses.COLOR_YELLOW, curses.COLOR_GREEN, curses.COLOR_CYAN, curses.COLOR_BLUE, curses.COLOR_MAGENTA]
+RAINBOW_L = [curses.COLOR_RED,
+             curses.COLOR_YELLOW,
+             curses.COLOR_GREEN,
+             curses.COLOR_CYAN,
+             curses.COLOR_BLUE,
+             curses.COLOR_MAGENTA]
+
+TITLE_Y_OFFSET = 0
 
 PLAYGRID_W = 19
 PLAYGRID_H = 7
-OFFSET_FROM_TITLE = 2
-PLAYGRID_Y_OFFSET = TITLE_H + OFFSET_FROM_TITLE
-PLAYGRID_YC = TITLE_H + OFFSET_FROM_TITLE + (PLAYGRID_H // 2)
+TITLE_PG_PAD = 2
+PLAYGRID_Y_OFFSET = TITLE_Y_OFFSET + TITLE_H + TITLE_PG_PAD
+PLAYGRID_YC = TITLE_Y_OFFSET + TITLE_H + TITLE_PG_PAD + (PLAYGRID_H // 2)
 HERO_REL_X = 5
 PG_REL_Y_BOUND = PLAYGRID_H // 2
 PG_ABS_PY_BOUND = PLAYGRID_YC + PG_REL_Y_BOUND
