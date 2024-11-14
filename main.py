@@ -2,23 +2,31 @@ import sys
 import curses
 from pytick.Ticker import Ticker
 import constants as cst
-import movement as mv
-import Player
+import visobj as vo
+import random as rnd
 
-
-# passing colors to this makes no sense, it doesn't use them directly
-def colour_strobe(stdscr, text, y_pos, init_x, colors, color_offset):
+def colour_strobe(stdscr,
+                  text: str,
+                  y_pos: int,
+                  init_x: int,
+                  color_offset: int,
+                  color_wrap: int):
     for i, char in enumerate(text):
-        color_index = (i + color_offset) % len(colors)
+        color_index = (i + color_offset) % color_wrap
         stdscr.addch(y_pos,
                      init_x + i,
                      char,
                      curses.color_pair(color_index + 1) | curses.A_BOLD)
 
 
-def colour_wave(stdscr, line_l, init_y, init_x, colors, color_offset):
+def colour_wave(stdscr,
+                line_l: list[str],
+                init_y: int,
+                init_x: int,
+                color_offset: int,
+                color_wrap: int):
     for i, line in enumerate(line_l):
-        colour_strobe(stdscr, line, init_y + i, init_x, colors, color_offset)
+        colour_strobe(stdscr, line, init_y + i, init_x, color_offset, color_wrap)
 
 
 # consider config dataclass for accessing
@@ -36,44 +44,38 @@ def main(stdscr):
     topwin = stdscr.subwin(cst.TITLE_H, dw, cst.TITLE_Y_OFFSET, 0)
     playarea_x_mar = dw // 8
     playarea_x_w = int(dw - (playarea_x_mar * 2))
-    playgrid_x_spc = (playarea_x_w - (2 * cst.PLAYAREA_HMAR)) // (cst.PLAYGRID_W - 1)
-    playwin = stdscr.subwin(cst.PLAYAREA_H, playarea_x_w, cst.PLAYAREA_Y_OFFSET, playarea_x_mar)
-    hero_x = (cst.HERO_REL_X * playgrid_x_spc) + cst.PLAYAREA_HMAR
+    playgrid_x_w = (playarea_x_w - (2 * cst.PLAYAREA_HMAR))
+    playgrid_x_spc = playgrid_x_w // (cst.PLAYGRID_W - 1)
+    playgrid_rx_bound = cst.PLAYAREA_HMAR + (cst.PLAYGRID_W - 1) * playgrid_x_spc
+    playwin = stdscr.subwin(cst.PLAYAREA_H,
+                            playarea_x_w,
+                            cst.PLAYAREA_Y_OFFSET,
+                            playarea_x_mar)
+    playwin.box()
 
     # init game loop
     # init vars
     timer = Ticker(0.01)
+    x_speed = 1000  # higher is slower
     init_player_x = (cst.HERO_REL_X * playgrid_x_spc) + cst.PLAYAREA_HMAR
-    pacman = Player.Player(
+    pacman = vo.Player(
         cst.PLAYAREA_YC,
         init_player_x,
         cst.PG_DY_BOUND,
         init_player_x,
-        cst.PG_UY_BOUND,
+        cst.PG_UY_BOUND
     )
-    legal_mv = 0
+    ghosts = []
     color_offset = 1
-
-    # init draw title
-    colour_wave(topwin,
-                cst.TITLE_L,
-                cst.TITLE_Y_OFFSET,
-                ((dw // 2) - (cst.TITLE_W // 2)),
-                cst.COLOR_L,
-                color_offset)
-    color_offset = (color_offset + 1) % len(cst.COLOR_L)
-    playwin.box()
-    # init draw track
-    for nl in range(cst.PLAYGRID_H):
-        for nc in range(cst.PLAYGRID_W):
-            playwin.addch(nl + cst.PLAYAREA_VMAR,
-                          (nc * playgrid_x_spc) + cst.PLAYAREA_HMAR,
-                          cst.GRIDCH)
-    # init draw hero
-    pacman.draw(playwin,
-                curses.color_pair(1) | curses.A_BOLD)
+    # draw track - might be visually nicer without
+    # for nl in range(cst.PLAYGRID_H):
+    #     for nc in range(cst.PLAYGRID_W):
+    #         playwin.addch(nl + cst.PLAYAREA_VMAR,
+    #                       (nc * playgrid_x_spc) + cst.PLAYAREA_HMAR,
+    #                       cst.GRIDCH)
     prev_y = None
     timer.start()
+    # breakpoint()
     # game loop
     while True:
         # strobe title and edges
@@ -82,19 +84,32 @@ def main(stdscr):
                         cst.TITLE_L,
                         cst.TITLE_Y_OFFSET,
                         ((dw // 2) - (cst.TITLE_W // 2)),
-                        cst.COLOR_L,
-                        color_offset)
+                        color_offset,
+                        len(cst.COLOR_L))
+            color_offset = (color_offset + 1) % len(cst.COLOR_L)
+            topwin.refresh()
+        if timer.counter_comp(6):
             for y in [cst.PLAYAREA_VMAR - 1, cst.PLAYAREA_H - 3]:
                 colour_strobe(playwin,
                               '-' * (playarea_x_w - (cst.PLAYAREA_HMAR * 2)),
                               y,
                               cst.PLAYAREA_HMAR,
-                              [cst.COLOR_L[0], cst.COLOR_L[2]],
-                              color_offset)
-            color_offset = (color_offset + 1) % len(cst.COLOR_L)
-            topwin.refresh()
-        if timer.counter_comp(21):
+                              color_offset,
+                              3)
+        if timer.counter_comp(32):
+            for g in ghosts:
+                g.tog_anim()
+                g.draw(playwin)
+        if timer.counter_comp(20):
             pacman.tog_anim()
+        if timer.counter_comp(x_speed):
+            if rnd.random() > 0:
+                ghosts.append(vo.Ghost(rnd.choice(cst.COLOR_L),
+                                       rnd.randint(cst.PG_UY_BOUND, cst.PG_DY_BOUND),
+                                       playgrid_rx_bound,
+                                       cst.PG_DY_BOUND,
+                                       playgrid_rx_bound,
+                                       cst.PG_UY_BOUND))
 
         # usr input
         c = stdscr.getch()
@@ -115,10 +130,9 @@ def main(stdscr):
                     curses.color_pair(1) | curses.A_BOLD)
         if prev_y is not None:  # clear prev position
             playwin.addch(prev_y,
-                          hero_x,
+                          pacman.x,  # this will break if x movement is introduced
                           cst.GRIDCH)
             prev_y = None  # block until next time
-
 
         playwin.refresh()
         # stdscr.refresh()

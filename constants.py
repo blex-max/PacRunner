@@ -31,13 +31,13 @@ __________                              __________ .__ .__   .__  ._.
                                \/                                  \/
 """
 
-HEROOPENCH = 'ᗧ' ## or C
+HEROOPENCH = 'ᗧ'
 HEROCLOSEDCH = 'ᗡ'
-GRIDCH = '·'
+GRIDCH = ' '  # '·' if you want a nice grid
 EDGECH = '-'
-GHOSTCH = 'ᗣ'
+GHOSTCH_L = ['ᗣ', 'ᙁ', 'ᙉ', 'ᑛ', 'ᑜ', 'ᗩ']
 COINCH = 'Ø'  # make yellow
-PILLCH = '⦷'
+PILLCH = '⦷'  # or θ (note italics)
 
 COLOR_L = [curses.COLOR_RED,
            curses.COLOR_YELLOW,
