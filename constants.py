@@ -31,12 +31,13 @@ __________                              __________ .__ .__   .__  ._.
                                \/                                  \/
 """
 
-HEROCH = 'C'
+HEROOPENCH = 'ᗧ' ## or C
+HEROCLOSEDCH = 'ᗡ'
 GRIDCH = '·'
 EDGECH = '-'
 GHOSTCH = 'ᗣ'
 COINCH = 'Ø'  # make yellow
-PILLCH = '0'
+PILLCH = '⦷'
 
 COLOR_L = [curses.COLOR_RED,
            curses.COLOR_YELLOW,

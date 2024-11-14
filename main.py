@@ -3,6 +3,7 @@ import curses
 from pytick.Ticker import Ticker
 import constants as cst
 import movement as mv
+import Player
 
 
 # passing colors to this makes no sense, it doesn't use them directly
@@ -42,8 +43,14 @@ def main(stdscr):
     # init game loop
     # init vars
     timer = Ticker(0.01)
-    hero_y = cst.PLAYAREA_YC
-    hero_x = (cst.HERO_REL_X * playgrid_x_spc) + cst.PLAYAREA_HMAR
+    init_player_x = (cst.HERO_REL_X * playgrid_x_spc) + cst.PLAYAREA_HMAR
+    pacman = Player.Player(
+        cst.PLAYAREA_YC,
+        init_player_x,
+        cst.PG_DY_BOUND,
+        init_player_x,
+        cst.PG_UY_BOUND,
+    )
     legal_mv = 0
     color_offset = 1
 
@@ -63,10 +70,9 @@ def main(stdscr):
                           (nc * playgrid_x_spc) + cst.PLAYAREA_HMAR,
                           cst.GRIDCH)
     # init draw hero
-    playwin.addch(hero_y,
-                  hero_x,
-                  cst.HEROCH,
-                  curses.color_pair(1) | curses.A_BOLD)
+    pacman.draw(playwin,
+                curses.color_pair(1) | curses.A_BOLD)
+    prev_y = None
     timer.start()
     # game loop
     while True:
@@ -87,6 +93,8 @@ def main(stdscr):
                               color_offset)
             color_offset = (color_offset + 1) % len(cst.COLOR_L)
             topwin.refresh()
+        if timer.counter_comp(21):
+            pacman.tog_anim()
 
         # usr input
         c = stdscr.getch()
@@ -94,22 +102,23 @@ def main(stdscr):
             case 113:  # q
                 break
             case 258:  # arrow down
-                legal_mv, hero_y, prev_y = mv.move_bound_y(hero_y, 0)
+                prev_y = pacman.y
+                pacman.move_y(0)
             case 259:  # arrow up
-                legal_mv, hero_y, prev_y = mv.move_bound_y(hero_y, 1)
+                prev_y = pacman.y
+                pacman.move_y(1)
             case _:
                 pass
 
         # draw hero
-        playwin.addch(hero_y,
-                      hero_x,
-                      cst.HEROCH,
-                      curses.color_pair(1) | curses.A_BOLD)
-        if legal_mv:  # clear prev position
+        pacman.draw(playwin,
+                    curses.color_pair(1) | curses.A_BOLD)
+        if prev_y is not None:  # clear prev position
             playwin.addch(prev_y,
                           hero_x,
                           cst.GRIDCH)
-            legal_mv = 0  # block until next time
+            prev_y = None  # block until next time
+
 
         playwin.refresh()
         # stdscr.refresh()
