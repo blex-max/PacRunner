@@ -99,17 +99,23 @@ def main(stdscr):
         if timer.counter_comp(32):
             for g in ghosts:
                 g.tog_anim()
-                g.draw(playwin)
+                g.draw()
         if timer.counter_comp(20):
             pacman.tog_anim()
         if timer.counter_comp(x_speed):
             if rnd.random() > 0:
-                ghosts.append(vo.Ghost(rnd.choice(cst.COLOR_L),
+                ghosts.append(vo.Ghost(playwin,
+                                       timer,
+                                       rnd.randint(20, 80),
+                                       rnd.choice(cst.COLOR_L),
                                        rnd.randint(cst.PG_UY_BOUND, cst.PG_DY_BOUND),
                                        playgrid_rx_bound,
                                        cst.PG_DY_BOUND,
                                        playgrid_rx_bound,
-                                       cst.PG_UY_BOUND))
+                                       cst.PG_UY_BOUND,
+                                       playarea_x_mar))
+
+        ghosts = [g for g in ghosts if g.update()]  # probably not very pythonic
 
         # usr input
         c = stdscr.getch()

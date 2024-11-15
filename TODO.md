@@ -1,4 +1,6 @@
 # next steps
+- move a ghost
+- collision detection before any more ghosts!!
 - simple 'ghosts', randomly spawning and moving down the track, no effect
 
 ## initial release goals (no stretch)
@@ -13,5 +15,6 @@
 - moving ghosts
 
 ## DONE
+- animated immobile ghosts, spawning at random - *DONE*
 - add playgrid horizontal margin with cycling 2 colour oscillation to give sense of movement - *DONE*
 
