@@ -36,6 +36,7 @@ def gameloop(stdscr):
 
     # init game loop
     # init vars
+    diff_mod = 1
     x_speed = 1000  # higher is slower
     init_player_x = (cst.HERO_REL_X * track_x_spc) + cst.PLAYWIN_HMAR
     pacman = vo.Player(
@@ -72,22 +73,19 @@ def gameloop(stdscr):
         if timer.cmod(6):
             for y in [cst.PLAYWIN_VMAR - 1, cst.PLAYWIN_H - 3]:
                 af.colour_strobe(playwin,
-                                '-' * (playwin_x_w - (cst.PLAYWIN_HMAR * 2)),
-                                y,
-                                cst.PLAYWIN_HMAR,
-                                color_offset,
-                                3)
-        if timer.cmod(32):
-            for g in ghosts:
-                g.tog_anim()
-                g.draw()
+                                 '-' * (playwin_x_w - (cst.PLAYWIN_HMAR * 2)),
+                                 y,
+                                 cst.PLAYWIN_HMAR,
+                                 color_offset,
+                                 3)
         if timer.cmod(20):
             pacman.tog_anim()
         if timer.cmod(x_speed):
-            if rnd.random() > 0:
+            if rnd.random() > 0.25:
                 ghosts.append(vo.Ghost(playwin,
                                        timer,
                                        rnd.randint(20, 80),
+                                       rnd.randint(29, 33),
                                        rnd.choice(cst.COLOR_L),
                                        rnd.randint(cst.TRACK_UY_BOUND,
                                                    cst.TRACK_DY_BOUND),
@@ -96,7 +94,10 @@ def gameloop(stdscr):
                                        track_rx_bound,
                                        cst.TRACK_UY_BOUND,
                                        cst.PLAYWIN_HMAR))
-
+                # NEXT
+                # this stops cmod blocking working
+                # will need a ghost spawner control class or something
+                x_speed = x_speed - diff_mod  # first attempt at increasing difficulty
         tmp_ghosts = []
         for g in ghosts:
             if g.update():

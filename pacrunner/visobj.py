@@ -14,9 +14,9 @@ class Player:
                  rx_bound,
                  uy_bound=0,
                  lx_bound=0):
-        self.__default_anim_pair = (cst.HEROCLOSEDCH, cst.HEROOPENCH)
-        self.__togidx = 0
-        self.ch = self.__default_anim_pair[0]
+        self._default_anim_pair = (cst.HEROCLOSEDCH, cst.HEROOPENCH)
+        self._togidx = 0
+        self.ch = self._default_anim_pair[0]
         self.y = init_y
         self.x = init_x
         self.dy_bound = dy_bound
@@ -25,8 +25,8 @@ class Player:
         self.lx_bound = lx_bound
 
     def tog_anim(self):
-        self.__togidx = (self.__togidx + 1) % len(self.__default_anim_pair)
-        self.ch = self.__default_anim_pair[self.__togidx]
+        self._togidx = (self._togidx + 1) % len(self._default_anim_pair)
+        self.ch = self._default_anim_pair[self._togidx]
 
     def move_y(self, dir):
         if dir:
@@ -51,7 +51,8 @@ class Ghost:
     def __init__(self,
                  stdscr,
                  ticker: IncTicker,
-                 freq,
+                 mvfreq: int,
+                 animfreq: int,
                  col: int,
                  init_y,
                  init_x,
@@ -59,12 +60,13 @@ class Ghost:
                  rx_bound,
                  uy_bound=0,
                  lx_bound=0):
-        self.__anims = sample(cst.GHOSTCH_L, 2)
-        self.__togidx = 0
-        self.ch = self.__anims[self.__togidx]
+        self._anims = sample(cst.GHOSTCH_L, 2)
+        self._togidx = 0
+        self.ch = self._anims[self._togidx]
         self.__stdscr = stdscr
         self.__ticker_ref = ticker
-        self.__freq = freq
+        self._mvfreq = mvfreq
+        self._animfreq = animfreq
         self.col = col
         self.y = init_y
         self.x = init_x
@@ -72,11 +74,12 @@ class Ghost:
         self.rx_bound = rx_bound
         self.uy_bound = uy_bound
         self.lx_bound = lx_bound
-        self.__update_block = 0
+        self._mvblock = False
+        self._anim_block = False
 
     def tog_anim(self):
-        self.__togidx = (self.__togidx + 1) % len(self.__anims)
-        self.ch = self.__anims[self.__togidx]
+        self._togidx = (self._togidx + 1) % len(self._anims)
+        self.ch = self._anims[self._togidx]
 
     def draw(self, xattr=0):
         self.__stdscr.addch(self.y,
@@ -107,12 +110,21 @@ class Ghost:
         self.draw(xattr)
 
     def update(self) -> bool:
-        if self.__ticker_ref.mod(self.__freq):
-            if not self.__update_block:
-                self.move_draw(1, 2)
-                self.__update_block = True
-        elif self.__update_block:
-            self.__update_block = 0
+        if self.__ticker_ref.mod(self._animfreq):
+            if not self._anim_block:
+                self.tog_anim()
+        elif self._anim_block:
+            self._anim_block = False
+
+        if self.__ticker_ref.mod(self._mvfreq):
+            if not self._mvblock:
+                self.clear()
+                self.move_x(1, 2)
+                self._mvblock = True
+        elif self._mvblock:
+            self._mvblock = False
+
+        self.draw()
         if self.x <= self.lx_bound:
             self.clear()
             return False
