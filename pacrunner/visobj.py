@@ -1,6 +1,7 @@
 # if this gets complicated, consider parent class, or composing move, draw, obj
 # abstract classes and so on
 from pacrunner import constants as cst
+from pytick.ticker import IncTicker
 import curses
 from random import sample
 
@@ -35,21 +36,21 @@ class Player:
             if self.y < self.dy_bound:
                 self.y += 1
 
-    def draw(self, stdscr, attr):
+    def draw(self, stdscr, attr = 0):
         stdscr.addch(self.y,
                      self.x,
                      self.ch,
                      attr)
 
-    def move_y_draw(self, stdscr, dir, attr):
+    def move_y_draw(self, stdscr, dir, attr = 0):
         self.move_y(dir)
-        self.draw(stdscr)
+        self.draw(stdscr, attr)
 
 
 class Ghost:
     def __init__(self,
                  stdscr,
-                 ticker,
+                 ticker: IncTicker,
                  freq,
                  col: int,
                  init_y,
@@ -98,7 +99,7 @@ class Ghost:
             if self.x < self.rx_bound:
                 self.x += dist
 
-    def move_draw(self, dir: int, dist: int, xattr=0, clear=True):
+    def move_draw(self, dir: int, dist: int, xattr=0):
         self.__stdscr.addch(self.y,
                             self.x,
                             cst.GRIDCH)
@@ -106,7 +107,7 @@ class Ghost:
         self.draw(xattr)
 
     def update(self) -> bool:
-        if self.__ticker_ref.counter_comp(self.__freq, blk=False):
+        if self.__ticker_ref.mod(self.__freq):
             if not self.__update_block:
                 self.move_draw(1, 2)
                 self.__update_block = True

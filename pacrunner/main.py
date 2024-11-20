@@ -1,6 +1,6 @@
 import sys
 import curses
-from pytick.ticker import Ticker
+from pytick.ticker import IncTicker
 from pacrunner import constants as cst
 from pacrunner import visobj as vo
 from pacrunner import artfunc as af
@@ -18,49 +18,49 @@ def gameloop(stdscr):
     curses.use_default_colors()
     for i, color in enumerate(cst.COLOR_L):
         curses.init_pair(i + 1, color, -1)  # -1 for default background
-    dh, dw = stdscr.getmaxyx()
+    _, dw = stdscr.getmaxyx()
     topwin = stdscr.subwin(cst.TITLE_H,
                            dw,
                            cst.TITLE_Y_OFFSET,
                            0)
-    playarea_x_mar = dw // 6  # changing 8 to 6 here fucked up the ghost clearing
-    playarea_x_w = int(dw - (playarea_x_mar * 2))
-    playgrid_x_w = (playarea_x_w - (2 * cst.PLAYAREA_HMAR))
-    playgrid_x_spc = playgrid_x_w // (cst.PLAYGRID_W - 1)
-    playgrid_rx_bound = cst.PLAYAREA_HMAR + (cst.PLAYGRID_W - 1) * playgrid_x_spc
-    playwin = stdscr.subwin(cst.PLAYAREA_H,
-                            playarea_x_w,
-                            cst.PLAYAREA_Y_OFFSET,
-                            playarea_x_mar)
+    playwin_x_mar = dw // 6  # changing 8 to 6 here fucked up the ghost clearing
+    playwin_x_w = int(dw - (playwin_x_mar * 2))
+    track_x_w = (playwin_x_w - (2 * cst.PLAYWIN_HMAR))
+    track_x_spc = track_x_w // (cst.TRACK_W - 1)
+    track_rx_bound = cst.PLAYWIN_HMAR + (cst.TRACK_W - 1) * track_x_spc
+    playwin = stdscr.subwin(cst.PLAYWIN_H,
+                            playwin_x_w,
+                            cst.PLAYWIN_Y_OFFSET,
+                            playwin_x_mar)
     playwin.box()
 
     # init game loop
     # init vars
-    timer = Ticker(0.01)
     x_speed = 1000  # higher is slower
-    init_player_x = (cst.HERO_REL_X * playgrid_x_spc) + cst.PLAYAREA_HMAR
+    init_player_x = (cst.HERO_REL_X * track_x_spc) + cst.PLAYWIN_HMAR
     pacman = vo.Player(
-        cst.PLAYAREA_YC,
+        cst.PLAYWIN_YO,
         init_player_x,
-        cst.PG_DY_BOUND,
+        cst.TRACK_DY_BOUND,
         init_player_x,
-        cst.PG_UY_BOUND
+        cst.TRACK_UY_BOUND
     )
     ghosts = []
     color_offset = 1
     # draw track - might be visually nicer without
-    # for nl in range(cst.PLAYGRID_H):
-    #     for nc in range(cst.PLAYGRID_W):
+    # for nl in range(cst.track_H):
+    #     for nc in range(cst.track_W):
     #         playwin.addch(nl + cst.PLAYAREA_VMAR,
-    #                       (nc * playgrid_x_spc) + cst.PLAYAREA_HMAR,
+    #                       (nc * track_x_spc) + cst.PLAYAREA_HMAR,
     #                       cst.GRIDCH)
     prev_y = None
-    timer.start()
+    run = True
+    timer = IncTicker(0.01)
     # breakpoint()
     # game loop
-    while True:
+    while run:
         # strobe title and edges
-        if timer.counter_comp(5):
+        if timer.cmod(5):
             af.colour_wave(topwin,
                            cst.TITLE_L,
                            cst.TITLE_Y_OFFSET,
@@ -69,35 +69,41 @@ def gameloop(stdscr):
                            len(cst.COLOR_L))
             color_offset = (color_offset + 1) % len(cst.COLOR_L)
             topwin.refresh()
-        if timer.counter_comp(6):
-            for y in [cst.PLAYAREA_VMAR - 1, cst.PLAYAREA_H - 3]:
+        if timer.cmod(6):
+            for y in [cst.PLAYWIN_VMAR - 1, cst.PLAYWIN_H - 3]:
                 af.colour_strobe(playwin,
-                                '-' * (playarea_x_w - (cst.PLAYAREA_HMAR * 2)),
+                                '-' * (playwin_x_w - (cst.PLAYWIN_HMAR * 2)),
                                 y,
-                                cst.PLAYAREA_HMAR,
+                                cst.PLAYWIN_HMAR,
                                 color_offset,
                                 3)
-        if timer.counter_comp(32):
+        if timer.cmod(32):
             for g in ghosts:
                 g.tog_anim()
                 g.draw()
-        if timer.counter_comp(20):
+        if timer.cmod(20):
             pacman.tog_anim()
-        if timer.counter_comp(x_speed):
+        if timer.cmod(x_speed):
             if rnd.random() > 0:
                 ghosts.append(vo.Ghost(playwin,
                                        timer,
                                        rnd.randint(20, 80),
                                        rnd.choice(cst.COLOR_L),
-                                       rnd.randint(cst.PG_UY_BOUND,
-                                                   cst.PG_DY_BOUND),
-                                       playgrid_rx_bound,
-                                       cst.PG_DY_BOUND,
-                                       playgrid_rx_bound,
-                                       cst.PG_UY_BOUND,
-                                       playarea_x_mar))
+                                       rnd.randint(cst.TRACK_UY_BOUND,
+                                                   cst.TRACK_DY_BOUND),
+                                       track_rx_bound,
+                                       cst.TRACK_DY_BOUND,
+                                       track_rx_bound,
+                                       cst.TRACK_UY_BOUND,
+                                       cst.PLAYWIN_HMAR))
 
-        ghosts = [g for g in ghosts if g.update()]  # probably not very pythonic
+        tmp_ghosts = []
+        for g in ghosts:
+            if g.update():
+                tmp_ghosts.append(g)
+            if g.y == pacman.y and g.x == pacman.x:
+                run = False
+        ghosts = tmp_ghosts
 
         # usr input
         c = stdscr.getch()
@@ -126,8 +132,8 @@ def gameloop(stdscr):
         # stdscr.refresh()
         timer.update()
 
-    sys.exit(0)
-
 
 def main():
     curses.wrapper(gameloop)
+    print('gameover')
+    sys.exit(0)
