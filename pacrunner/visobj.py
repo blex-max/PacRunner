@@ -1,6 +1,6 @@
 # if this gets complicated, consider parent class, or composing move, draw, obj
 # abstract classes and so on
-import constants as cst
+from pacrunner import constants as cst
 import curses
 from random import sample
 

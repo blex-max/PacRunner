@@ -1,4 +1,4 @@
-import utility as u
+from pacrunner import artfunc as af
 import curses
 
 TITLE = r"""
@@ -9,8 +9,8 @@ __________                __________                                       ._.
  |____|    (____  / \___  >|____|_  /|____/ |___|  /|___|  / \___  >|__|    __
                 \/      \/        \/             \/      \/      \/         \/
 """
-TITLE_W = u.art_width(TITLE)
-TITLE_L = u.art2lines(TITLE)
+TITLE_W = af.art_width(TITLE)
+TITLE_L = af.art2lines(TITLE)
 TITLE_H = len(TITLE_L)
 
 YOMYOM = r"""

@@ -1,38 +1,16 @@
 import sys
 import curses
-from pytick.Ticker import Ticker
-import constants as cst
-import visobj as vo
+from pytick.ticker import Ticker
+from pacrunner import constants as cst
+from pacrunner import visobj as vo
+from pacrunner import artfunc as af
 import random as rnd
-
-def colour_strobe(stdscr,
-                  text: str,
-                  y_pos: int,
-                  init_x: int,
-                  color_offset: int,
-                  color_wrap: int):
-    for i, char in enumerate(text):
-        color_index = (i + color_offset) % color_wrap
-        stdscr.addch(y_pos,
-                     init_x + i,
-                     char,
-                     curses.color_pair(color_index + 1) | curses.A_BOLD)
-
-
-def colour_wave(stdscr,
-                line_l: list[str],
-                init_y: int,
-                init_x: int,
-                color_offset: int,
-                color_wrap: int):
-    for i, line in enumerate(line_l):
-        colour_strobe(stdscr, line, init_y + i, init_x, color_offset, color_wrap)
 
 
 # consider config dataclass for accessing
 # system-specific (i.e. assinged with in main) constants
 # when separating into sub windows and so on
-def main(stdscr):
+def gameloop(stdscr):
     stdscr.clear()
     stdscr.nodelay(True)
     curses.curs_set(0)
@@ -41,8 +19,11 @@ def main(stdscr):
     for i, color in enumerate(cst.COLOR_L):
         curses.init_pair(i + 1, color, -1)  # -1 for default background
     dh, dw = stdscr.getmaxyx()
-    topwin = stdscr.subwin(cst.TITLE_H, dw, cst.TITLE_Y_OFFSET, 0)
-    playarea_x_mar = dw // 8
+    topwin = stdscr.subwin(cst.TITLE_H,
+                           dw,
+                           cst.TITLE_Y_OFFSET,
+                           0)
+    playarea_x_mar = dw // 6  # changing 8 to 6 here fucked up the ghost clearing
     playarea_x_w = int(dw - (playarea_x_mar * 2))
     playgrid_x_w = (playarea_x_w - (2 * cst.PLAYAREA_HMAR))
     playgrid_x_spc = playgrid_x_w // (cst.PLAYGRID_W - 1)
@@ -80,22 +61,22 @@ def main(stdscr):
     while True:
         # strobe title and edges
         if timer.counter_comp(5):
-            colour_wave(topwin,
-                        cst.TITLE_L,
-                        cst.TITLE_Y_OFFSET,
-                        ((dw // 2) - (cst.TITLE_W // 2)),
-                        color_offset,
-                        len(cst.COLOR_L))
+            af.colour_wave(topwin,
+                           cst.TITLE_L,
+                           cst.TITLE_Y_OFFSET,
+                           ((dw // 2) - (cst.TITLE_W // 2)),
+                           color_offset,
+                           len(cst.COLOR_L))
             color_offset = (color_offset + 1) % len(cst.COLOR_L)
             topwin.refresh()
         if timer.counter_comp(6):
             for y in [cst.PLAYAREA_VMAR - 1, cst.PLAYAREA_H - 3]:
-                colour_strobe(playwin,
-                              '-' * (playarea_x_w - (cst.PLAYAREA_HMAR * 2)),
-                              y,
-                              cst.PLAYAREA_HMAR,
-                              color_offset,
-                              3)
+                af.colour_strobe(playwin,
+                                '-' * (playarea_x_w - (cst.PLAYAREA_HMAR * 2)),
+                                y,
+                                cst.PLAYAREA_HMAR,
+                                color_offset,
+                                3)
         if timer.counter_comp(32):
             for g in ghosts:
                 g.tog_anim()
@@ -108,7 +89,8 @@ def main(stdscr):
                                        timer,
                                        rnd.randint(20, 80),
                                        rnd.choice(cst.COLOR_L),
-                                       rnd.randint(cst.PG_UY_BOUND, cst.PG_DY_BOUND),
+                                       rnd.randint(cst.PG_UY_BOUND,
+                                                   cst.PG_DY_BOUND),
                                        playgrid_rx_bound,
                                        cst.PG_DY_BOUND,
                                        playgrid_rx_bound,
@@ -147,4 +129,5 @@ def main(stdscr):
     sys.exit(0)
 
 
-curses.wrapper(main)
+def main():
+    curses.wrapper(gameloop)
