@@ -1,7 +1,7 @@
 # if this gets complicated, consider parent class, or composing move, draw, obj
 # abstract classes and so on
 from pacrunner import constants as cst
-from pytick.ticker import IncTicker
+from tickpy.ticker import IncTicker
 import curses
 from random import sample
 
@@ -109,6 +109,7 @@ class Ghost:
         self.move_x(dir, dist)
         self.draw(xattr)
 
+    # ghost movement fucks up the anim
     def update(self) -> bool:
         if self.__ticker_ref.mod(self._animfreq):
             if not self._anim_block:

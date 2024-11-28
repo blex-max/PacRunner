@@ -7,7 +7,7 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "^3.13"
-pytick = {git = "https://github.com/blex-max/pytick"}
+tickpy = {git = "https://github.com/blex-max/pytick"}
 
 
 [build-system]

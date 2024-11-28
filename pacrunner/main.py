@@ -1,6 +1,6 @@
 import sys
 import curses
-from pytick.ticker import IncTicker
+from tickpy.ticker import IncTicker
 from pacrunner import constants as cst
 from pacrunner import visobj as vo
 from pacrunner import artfunc as af
@@ -24,9 +24,10 @@ def gameloop(stdscr):
                            cst.TITLE_Y_OFFSET,
                            0)
     playwin_x_mar = dw // 6  # changing 8 to 6 here fucked up the ghost clearing
-    playwin_x_w = int(dw - (playwin_x_mar * 2))
+    playwin_x_w = 50 # int(dw - (playwin_x_mar * 2))  # a shorter track would be preferable for now I think
     track_x_w = (playwin_x_w - (2 * cst.PLAYWIN_HMAR))
-    track_x_spc = track_x_w // (cst.TRACK_W - 1)
+    # x_spc is really about hero move dist
+    track_x_spc = track_x_w // (cst.TRACK_W - 1)  # this should be reconceptualised
     track_rx_bound = cst.PLAYWIN_HMAR + (cst.TRACK_W - 1) * track_x_spc
     playwin = stdscr.subwin(cst.PLAYWIN_H,
                             playwin_x_w,
@@ -36,7 +37,8 @@ def gameloop(stdscr):
 
     # init game loop
     # init vars
-    diff_mod = 1
+    # have an 'corner-of-eye difficulty (I like having it in a second screen region)'
+    diff_mod = 100
     x_speed = 1000  # higher is slower
     init_player_x = (cst.HERO_REL_X * track_x_spc) + cst.PLAYWIN_HMAR
     pacman = vo.Player(
@@ -56,12 +58,12 @@ def gameloop(stdscr):
     #                       cst.GRIDCH)
     prev_y = None
     run = True
-    timer = IncTicker(0.01)
+    tck = IncTicker(0.01)
     # breakpoint()
     # game loop
     while run:
         # strobe title and edges
-        if timer.cmod(5):
+        if tck.cmod(5):
             af.colour_wave(topwin,
                            cst.TITLE_L,
                            cst.TITLE_Y_OFFSET,
@@ -70,7 +72,7 @@ def gameloop(stdscr):
                            len(cst.COLOR_L))
             color_offset = (color_offset + 1) % len(cst.COLOR_L)
             topwin.refresh()
-        if timer.cmod(6):
+        if tck.cmod(6):
             for y in [cst.PLAYWIN_VMAR - 1, cst.PLAYWIN_H - 3]:
                 af.colour_strobe(playwin,
                                  '-' * (playwin_x_w - (cst.PLAYWIN_HMAR * 2)),
@@ -78,13 +80,13 @@ def gameloop(stdscr):
                                  cst.PLAYWIN_HMAR,
                                  color_offset,
                                  3)
-        if timer.cmod(20):
+        if tck.cmod(20):
             pacman.tog_anim()
-        if timer.cmod(x_speed):
-            if rnd.random() > 0.25:
+        if tck.cmod(x_speed):
+            if rnd.random() > 0.2:
                 ghosts.append(vo.Ghost(playwin,
-                                       timer,
-                                       rnd.randint(20, 80),
+                                       tck,
+                                       rnd.randint(20, 80),  # ghosts need to go faster
                                        rnd.randint(29, 33),
                                        rnd.choice(cst.COLOR_L),
                                        rnd.randint(cst.TRACK_UY_BOUND,
@@ -94,10 +96,9 @@ def gameloop(stdscr):
                                        track_rx_bound,
                                        cst.TRACK_UY_BOUND,
                                        cst.PLAYWIN_HMAR))
-                # NEXT
-                # this stops cmod blocking working
-                # will need a ghost spawner control class or something
-                x_speed = x_speed - diff_mod  # first attempt at increasing difficulty
+            else:
+                x_speed = (x_speed - diff_mod) if x_speed > 100 else 100  # first attempt at increasing difficulty
+                tck.cmod(x_speed)
         tmp_ghosts = []
         for g in ghosts:
             if g.update():
@@ -131,7 +132,7 @@ def gameloop(stdscr):
 
         playwin.refresh()
         # stdscr.refresh()
-        timer.update()
+        tck.update()
 
 
 def main():

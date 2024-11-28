@@ -1,5 +1,9 @@
 # next steps
 - fix the totally broken difficulty mod
+- scoring
+- coins
+- pills
+- use pygame to add background music
 
 ## initial release goals (no stretch)
 - speed increase with time/score increase
