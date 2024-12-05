@@ -1,6 +1,9 @@
 from pacrunner import artfunc as af
 import curses
 
+MENU = 0
+GAME = 1
+
 TITLE = r"""
 __________                __________                                       ._.
 \______   \_____     ____ \______   \ __ __   ____    ____    ____ _______ | |
@@ -44,7 +47,8 @@ COLOR_L = [curses.COLOR_RED,
            curses.COLOR_GREEN,
            curses.COLOR_CYAN,
            curses.COLOR_BLUE,
-           curses.COLOR_MAGENTA]
+           curses.COLOR_MAGENTA,
+           curses.COLOR_WHITE]
 
 TITLE_Y_OFFSET = 0
 

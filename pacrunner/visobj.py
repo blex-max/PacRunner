@@ -6,6 +6,94 @@ import curses
 from random import sample
 
 
+class SingleLineStrobe():
+    def __init__(self,
+                 text: str,
+                 ticker: IncTicker,
+                 animfreq: int,
+                 draw_y: int,
+                 draw_x: int,
+                 color_offset: int,
+                 color_wrap: int,
+                 default_attr: int = 0):
+        self.__ticker_ref = ticker
+        self.__anim_block = False
+        self.__color_idx = 0
+        self.anim_freq = animfreq
+        self.text = text
+        self.y = draw_y
+        self.x = draw_x
+        self.color_offset = color_offset
+        self.color_wrap = color_wrap
+        self.attr = default_attr
+
+    def strobe(self,
+               stdscr,
+               y: int | None = None,
+               x: int | None = None,
+               attr: int | None = None):
+        if self.__ticker_ref.mod(self.anim_freq):
+            if not self.__anim_block:
+                y = y if y else self.y
+                x = x if x else self.x
+                attr = attr if attr else self.attr
+                for i, char in enumerate(self.text):
+                    color_index = (i + self.color_offset + self.__color_idx) % (self.color_wrap - self.color_offset)
+                    stdscr.addch(y,
+                                 x + i,
+                                 char,
+                                 curses.color_pair(color_index + 1) | attr)
+                self.__color_idx = (self.__color_idx + 1) % (self.color_wrap - self.color_offset)
+                self.__anim_block = True
+        elif self.__anim_block:
+            self.__anim_block = False
+
+
+class MultiLineStrobe():
+    def __init__(self,
+                 strl: list[str],
+                 ticker: IncTicker,
+                 animfreq: int,
+                 normal_draw_y: int,
+                 normal_draw_x: int,
+                 color_offset: int,
+                 color_wrap: int,
+                 default_attr: int = curses.A_BOLD):
+        self.__ticker_ref = ticker
+        self.__anim_block = False
+        self.__color_idx = 0
+        self.anim_freq = animfreq
+        self.y = normal_draw_y
+        self.x = normal_draw_x
+        self.strl = strl
+        self.color_offset = color_offset
+        self.color_wrap = color_wrap
+        self.attr = default_attr
+
+    def strobe(self,
+               stdscr,
+               y: int | None = None,
+               x: int | None = None,
+               attr: int | None = None):
+        if self.__ticker_ref.mod(self.anim_freq):
+            if not self.__anim_block:
+                y = y if y else self.y
+                x = x if x else self.x
+                attr = attr if attr else self.attr
+                for i, line in enumerate(self.strl):
+                    for j, char in enumerate(line):
+                        color_index = (j + self.color_offset + self.__color_idx) % (self.color_wrap - self.color_offset)
+                        stdscr.addch(y + i,
+                                     x + j,
+                                     char,
+                                     curses.color_pair(color_index + 1) | attr)
+                self.__color_idx = (self.__color_idx + 1) % (self.color_wrap - self.color_offset)
+                self.__anim_block = True
+        elif self.__anim_block:
+            self.__anim_block = False
+        
+        
+
 class Player:
     def __init__(self,
                  init_y,
@@ -109,7 +197,7 @@ class Ghost:
         self.move_x(dir, dist)
         self.draw(xattr)
 
-    # ghost movement fucks up the anim
+    # ghost movement fucks up the anim - fix
     def update(self) -> bool:
         if self.__ticker_ref.mod(self._animfreq):
             if not self._anim_block:
