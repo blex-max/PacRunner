@@ -37,7 +37,7 @@ def gameloop(stdscr):
                            mw,
                            cst.TITLE_Y_OFFSET,
                            0)
-    playwin_x_mar = mw // 6  # changing 8 to 6 here fucked up the ghost clearing
+    playwin_x_mar = mw // 6
     playwin_x_w = 50 # int(mw - (playwin_x_mar * 2))  # 50 is a shorter track, preferable for now I think
     track_x_w = (playwin_x_w - (2 * cst.PLAYWIN_HMAR))
     # x_spc is really about hero move dist
@@ -49,40 +49,49 @@ def gameloop(stdscr):
                             (mw // 2) - (playwin_x_w // 2))
     playwin.box()  # move to on transition from menu to game
 
+    pmh, pmw = playwin.getmaxyx()
+    msgbox = playwin.derwin(cst.PLAYWIN_H - 2,
+                            20,
+                            1,
+                            15)
+
     # init game loop
     # init vars
     # have an 'corner-of-eye difficulty (I like having it in a second screen region)'
     # implement startup menu with settings
-    # implement pause
-    # implement forward/backward movement of pacman
-    # implement coins and powerups
+    # implement pause - done
+    # implement forward/backward movement of pacman - done!
+    # implement coins and powerups - done!
     # implement sound
     # implement instructions and score at sides
     # implement yom yom every milestone
     # implement powerpill! on power pill
-    # fix ghost anim
+    # fix ghost anim - done
     # implement increasing track strobe speed with increasing difficulty
-    diff_mod = 100
-    x_speed = 500  # higher is slower
+    diff_period = 2000  # higher is slower
+    ghost_spawn_period = int(diff_period // 4)
+    coin_spawn_period = int(diff_period // 2)  # note yet used
+    diff_mod = 100  # can't remember if this is active
+
     init_player_x = (cst.HERO_REL_X * track_x_spc) + cst.PLAYWIN_HMAR
+    tck = IncTicker(0.01)
     pacman = vo.Player(
+        playwin,
+        tck,
         cst.PLAYWIN_YO,
         init_player_x,
+        curses.color_pair(1) | curses.A_BOLD,
         cst.TRACK_DY_BOUND,
-        init_player_x,
-        cst.TRACK_UY_BOUND
+        track_rx_bound - 1,
+        cst.TRACK_UY_BOUND,
+        cst.PLAYWIN_HMAR + 1
     )
     ghosts = []
-    color_offset = 1
-    # draw track - might be visually nicer without
-    # for nl in range(cst.track_H):
-    #     for nc in range(cst.track_W):
-    #         playwin.addch(nl + cst.PLAYAREA_VMAR,
-    #                       (nc * track_x_spc) + cst.PLAYAREA_HMAR,
-    #                       cst.GRIDCH)
-    prev_y = None
+    coins = []
+    pill = []
+    powerup = vo.Edible()
+    powerup_time = 0
     run = True
-    tck = IncTicker(0.01)
     # breakpoint()
     # try alternative track animations as this might be too distracting
     # like moving - space - space
@@ -100,7 +109,7 @@ def gameloop(stdscr):
                                       draw_x=cst.PLAYWIN_HMAR,
                                       color_offset=0,
                                       color_wrap=3)
-    main_title = vo.MultiLineStrobe(cst.TITLE_L,
+    main_title = vo.MultiLineStrobe(cst.TITLE_L,  # type: ignore
                                     ticker=tck,
                                     animfreq=5,
                                     normal_draw_y=cst.TITLE_Y_OFFSET,
@@ -110,19 +119,23 @@ def gameloop(stdscr):
     # game loop
     state: Literal[0,1] = 0
     playpress = 0
+    score = 0
     menu_play = 'play (y)'
-    menu_diff = 'difficulty: 100 ←→'
-    stdscr.addstr(1, 0, 'sound: on (m)')
+    menu_diff = 'difficulty: 100 (←→)'
+    menu_pause = 'pause (p)'
     stdscr.addstr(2, 0, 'quit (q)')
     while run:
+        # state-independent actions
+        stdscr.addstr(1, 0, 'sound: on (m)')
+        stdscr.addstr(3, 0, 'score: {}'.format(score))
         # state-independent actions
         # probably make anything which has it's own time senstive logic into an object with a timer reference
         # including strings
         match state:
             case cst.MENU:
                 main_title.strobe(topwin)
-                playwin.addstr(1, 1, 'play (y)', curses.color_pair(1))
-                playwin.addstr(2, 1, 'difficulty: 100 ←→', curses.color_pair(7))  # LR arrows
+                playwin.addstr(1, 1, menu_play, curses.color_pair(7))
+                playwin.addstr(2, 1, menu_diff, curses.color_pair(7))  # LR arrows
                 c = stdscr.getch()
                 match c:
                     case 113:  # q
@@ -146,23 +159,23 @@ def gameloop(stdscr):
                 main_title.strobe(stdscr)
                 upper_track.strobe(playwin)
                 lower_track.strobe(playwin)
-                # if tck.cmod(6):
-                #     for y in [cst.PLAYWIN_VMAR - 1, cst.PLAYWIN_H - 3]:
-                #         af.colour_strobe(playwin,
-                #                          '-' * (playwin_x_w - (cst.PLAYWIN_HMAR * 2)),
-                #                          y,
-                #                          cst.PLAYWIN_HMAR,
-                #                          color_offset,  # not working because not incremented - change to object
-                #                          3)
-                if tck.cmod(20):  # definite make this a part of player obj
-                    pacman.tog_anim()
-                if tck.cmod(x_speed):
+
+                if tck.cmod(diff_period):
+                    x_speed = (diff_period - diff_mod) if diff_mod > 100 else 100  # first attempt at increasing difficulty
+                    tck.cmod(diff_period)
+                    ghost_spawn_period = int(diff_period // 4)
+                    tck.cmod(ghost_spawn_period)
+                    coin_spawn_period = int(diff_period // 2)
+                    tck.cmod(coin_spawn_period)
+                if tck.cmod(ghost_spawn_period):
                     if rnd.random() > 0.2:
                         ghosts.append(vo.Ghost(playwin,
                                                tck,
-                                               rnd.randint(20, 80),  # ghosts need to go faster
+                                               powerup,
+                                               rnd.randint(20, 80),
                                                rnd.randint(29, 33),
                                                rnd.choice(cst.COLOR_L),
+                                               [5,7],
                                                rnd.randint(cst.TRACK_UY_BOUND,
                                                            cst.TRACK_DY_BOUND),
                                                track_rx_bound,
@@ -170,42 +183,125 @@ def gameloop(stdscr):
                                                track_rx_bound,
                                                cst.TRACK_UY_BOUND,
                                                cst.PLAYWIN_HMAR))
-                    else:
-                        x_speed = (x_speed - diff_mod) if x_speed > 100 else 100  # first attempt at increasing difficulty
-                        tck.cmod(x_speed)
+                # things with the same period won't be checked...
+                if tck.cmod(300):
+                    if rnd.random() > 0.2:
+                        coins.append(vo.CoinRun(playwin,
+                                                tck,
+                                                60,
+                                                rnd.randint(cst.TRACK_UY_BOUND,
+                                                            cst.TRACK_DY_BOUND),
+                                                track_rx_bound,
+                                                cst.PLAYWIN_HMAR,
+                                                track_rx_bound,
+                                                curses.color_pair(2)))
+                    if not pill and powerup_time < (tck.counter - 2500):
+                        if rnd.random() > 0.1:
+                            pill.append(vo.Pill(playwin,
+                                                tck,
+                                                60,
+                                                rnd.randint(cst.TRACK_UY_BOUND,
+                                                            cst.TRACK_DY_BOUND),
+                                                track_rx_bound,
+                                                cst.PLAYWIN_HMAR,
+                                                track_rx_bound,
+                                                [curses.color_pair(7),
+                                                 curses.color_pair(5)]))
+
+
+                playwin.addch(cst.TRACK_UY_BOUND,
+                              track_rx_bound,
+                              '░',
+                              curses.color_pair(7))
+                playwin.addch(cst.TRACK_UY_BOUND + 1,
+                              track_rx_bound,
+                              '░',
+                              curses.color_pair(7))
+                playwin.addch(cst.TRACK_UY_BOUND + 2,
+                              track_rx_bound,
+                              '░',
+                              curses.color_pair(7))
+
+                # handle collisions
                 tmp_ghosts = []
                 for g in ghosts:
-                    if g.update():
+                    gu = g.update()
+                    if g.y == pacman.y and g.x == pacman.x:
+                        if powerup.eatme:
+                            g.clear()
+                            score += 10
+                        else:
+                            run = False
+                    elif gu:
                         tmp_ghosts.append(g)
-                    if g.y == pacman.y and g.x == pacman.x:  # collision
-                        run = False
                 ghosts = tmp_ghosts
+
+                tmp_coins = []
+                for cr in coins:
+                    if cr.update():
+                        tmp_coins.append(cr)
+                    if pacman.y == cr.y and pacman.x in cr.xl:
+                        cv = cr.collect_at(pacman.x)
+                        match cv:
+                            case 1:
+                                score += 10
+                            case 2:
+                                score += 50
+                            case _:
+                                pass
+                coins = tmp_coins
+
+                tmp_pill = []
+                for p in pill:
+                    if p.update():
+                        tmp_pill.append(p)
+                    if p.y == pacman.y and p.x == pacman.x:
+                        powerup.eatme = True
+                        # 16s, plus some random element to keep you on your toes
+                        powerup_time = tck.counter + 1600 + rnd.randint(-200, 200)
+                        p.clear()
+                        tmp_pill = []
+                pill = tmp_pill
+
+                if tck.counter > powerup_time:
+                    powerup.eatme = False
 
                 # usr input
                 c = stdscr.getch()
                 match c:
+                    case 112:  # p - pause
+                        msgbox.bkgdset(' ', curses.color_pair(0))
+                        msgbox.erase()
+                        msgbox.box()
+                        msgbox.addstr(3, 7, 'PAUSE')
+                        msgbox.refresh()
+                        while True:
+                            c = stdscr.getch()
+                            if c == 112:
+                                break
+                            if c == 113:
+                                run = False
+                                break
+                        msgbox.erase()
+                        msgbox.clear()
+                        msgbox.refresh()
                     case 113:  # q
                         break
-                    case 258:  # arrow down
-                        prev_y = pacman.y
+                    case curses.KEY_LEFT:
+                        pacman.move_x(0)
+                    case curses.KEY_RIGHT:
+                        pacman.move_x(1)
+                    case curses.KEY_DOWN:
                         pacman.move_y(0)
-                    case 259:  # arrow up
-                        prev_y = pacman.y
+                    case curses.KEY_UP:  # arrow up
                         pacman.move_y(1)
                     case _:
                         pass
 
-                # draw hero
-                pacman.draw(playwin,
-                            curses.color_pair(1) | curses.A_BOLD)
-                if prev_y is not None:  # clear prev position
-                    playwin.addch(prev_y,
-                                  pacman.x,  # this will break if x movement is introduced
-                                  cst.GRIDCH)
-                    prev_y = None  # block until next time
+                pacman.update()
 
-            case _:
-                pass
+                if tck.cmod(100):  # 1s
+                    score += 1
 
         topwin.refresh()
         playwin.refresh()

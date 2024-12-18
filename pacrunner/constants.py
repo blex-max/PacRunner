@@ -39,7 +39,8 @@ HEROCLOSEDCH = 'ᗡ'
 GRIDCH = ' '  # '·' if you want a nice grid
 EDGECH = '-'
 GHOSTCH_L = ['ᗣ', 'ᙁ', 'ᙉ', 'ᑛ', 'ᑜ', 'ᗩ']
-COINCH = 'Ø'  # make yellow
+BIGCOINCH = 'Ø'  # make yellow
+SMALLCOINCH = '·'
 PILLCH = '⦷'  # or θ (note italics)
 
 COLOR_L = [curses.COLOR_RED,

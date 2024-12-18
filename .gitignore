@@ -2,3 +2,4 @@ __pycache__/
 poetry.lock
 .DS_Store
 dist/
+debug-main.py
