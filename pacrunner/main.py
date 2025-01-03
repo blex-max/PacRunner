@@ -7,12 +7,17 @@ from pacrunner import artfunc as af
 import random as rnd
 import time
 from typing import Literal
-
+import os
+os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = '1'  # the most egregious bullshit I've ever encountered in programming
+from pygame import mixer
 
 # consider config dataclass for accessing
 # system-specific (i.e. assinged with in main) constants
 # when separating into sub windows and so on
 def gameloop(stdscr):
+    mixer.init()
+    mixer.music.load('sound/intro.wav')
+    death = mixer.Sound('sound/gameover.wav')
     stdscr.clear()
     stdscr.nodelay(True)
     curses.curs_set(0)
@@ -47,7 +52,6 @@ def gameloop(stdscr):
                             playwin_x_w,
                             cst.PLAYWIN_Y_OFFSET,
                             (mw // 2) - (playwin_x_w // 2))
-    playwin.box()  # move to on transition from menu to game
 
     pmh, pmw = playwin.getmaxyx()
     msgbox = playwin.derwin(cst.PLAYWIN_H - 2,
@@ -117,25 +121,46 @@ def gameloop(stdscr):
                                     color_offset=0,
                                     color_wrap=10)
     # game loop
-    state: Literal[0,1] = 0
+    state: Literal[0,1,2] = cst.MENU
     playpress = 0
     score = 0
+    startup_finished = 0
+    intro_finished = 0
+    startup1 = 'for-elvira'
+    startup2 = '<3'
     menu_play = 'play (y)'
     menu_diff = 'difficulty: 100 (←→)'
     menu_pause = 'pause (p)'
-    stdscr.addstr(2, 0, 'quit (q)')
     while run:
         # state-independent actions
-        stdscr.addstr(1, 0, 'sound: on (m)')
-        stdscr.addstr(3, 0, 'score: {}'.format(score))
-        # state-independent actions
+        if startup_finished:
+            stdscr.addstr(1, 0, 'sound: on (m)')
+            stdscr.addstr(3, 0, 'score: {}'.format(score))
+            stdscr.addstr(2, 0, 'quit (q)')
+            if not mixer.music.get_busy():
+                intro_finished = 1
+            if intro_finished:
+                mixer.music.load('sound/mainloop.wav')
+                mixer.music.play()
+                intro_finished = 0
+
         # probably make anything which has it's own time senstive logic into an object with a timer reference
         # including strings
         match state:
+            case cst.STARTUP:
+                stdscr.addstr(int(mh // 2), int(mw // 2) - int(len(startup1) // 2), startup1)
+                if tck.counter > 200:
+                    stdscr.addstr(int(mh // 2), int(mw // 2) + int(len(startup1) // 2) + 1, startup2)
+                if tck.counter > 300:
+                    stdscr.clear()
+                if tck.counter > 400:
+                    state = cst.MENU
+                    mixer.music.play()
+                    startup_finished = 1
             case cst.MENU:
                 main_title.strobe(topwin)
-                playwin.addstr(1, 1, menu_play, curses.color_pair(7))
-                playwin.addstr(2, 1, menu_diff, curses.color_pair(7))  # LR arrows
+                playwin.addstr(1, int(playwin_x_w // 2) - int(len(menu_play) // 2) - 2, menu_play, curses.color_pair(7))
+                playwin.addstr(2, int(playwin_x_w // 2) - int(len(menu_diff) // 2) - 2, menu_diff, curses.color_pair(7))  # LR arrows
                 c = stdscr.getch()
                 match c:
                     case 113:  # q
@@ -149,10 +174,11 @@ def gameloop(stdscr):
                     case _:
                         pass
                 if playpress == 1:
-                    playwin.addstr(1, 1, cst.GRIDCH * len(menu_play))
-                    playwin.addstr(2, 1, cst.GRIDCH * len(menu_diff))
+                    playwin.addstr(1, int(playwin_x_w // 2) - int(len(menu_play) // 2) - 2, cst.GRIDCH * len(menu_play))
+                    playwin.addstr(2, int(playwin_x_w // 2) - int(len(menu_diff) // 2) - 2, cst.GRIDCH * len(menu_diff))
                     playwin.refresh()
                     main_title.color_wrap = 6
+                    playwin.box()
                     state = cst.GAME  # state transition
             case cst.GAME:
                 # strobe title and edges

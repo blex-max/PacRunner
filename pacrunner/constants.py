@@ -3,6 +3,7 @@ import curses
 
 MENU = 0
 GAME = 1
+STARTUP = 2
 
 TITLE = r"""
 __________                __________                                       ._.
