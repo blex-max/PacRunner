@@ -18,7 +18,10 @@ from pygame import mixer
 def gameloop(stdscr):
     mixer.init()
     mixer.music.load('sound/intro.wav')
+    music_vol = mixer.music.get_volume()  # default seems fine
     death = mixer.Sound('sound/gameover.wav')
+    sound_vol = 0.4
+    death.set_volume(sound_vol)
     stdscr.clear()
     stdscr.nodelay(True)
     curses.curs_set(0)
@@ -56,9 +59,9 @@ def gameloop(stdscr):
 
     pmh, pmw = playwin.getmaxyx()
     msgbox = playwin.derwin(cst.PLAYWIN_H - 2,
-                            20,
+                            23,
                             1,
-                            15)
+                            13)
 
     # init game loop
     # init vars
@@ -117,10 +120,10 @@ def gameloop(stdscr):
                                     color_offset=0,
                                     color_wrap=10)
     # game loop
-    state: Literal[0,1,2] = cst.MENU
+    state: Literal[0,1,2] = cst.MENU  # should be intro
     playpress = 0
     score = 0
-    startup_finished = 0
+    startup_finished = 1  # for quickstart, 1
     intro_finished = 0
     startup1 = 'for-elvira'
     startup2 = '<3'
@@ -143,10 +146,12 @@ def gameloop(stdscr):
 
         if flip_mute:
             if not mute:
-                mixer.pause()
+                mixer.music.set_volume(0)
+                death.set_volume(0)
                 mute = 1
             if mute:
-                mixer.unpause()
+                mixer.music.set_volume(music_vol)
+                death.set_volume(sound_vol)
                 mute = 0
             flip_mute = 0
 
@@ -187,6 +192,7 @@ def gameloop(stdscr):
                     playwin.refresh()
                     main_title.color_wrap = 6
                     playwin.box()
+                    playpress = 0
                     state = cst.GAME  # state transition
             case cst.GAME:
                 # strobe title and edges
@@ -268,10 +274,16 @@ def gameloop(stdscr):
                             msgbox.bkgdset(' ', curses.color_pair(0))
                             msgbox.erase()
                             msgbox.box()
-                            msgbox.addstr(3, 5, 'GAME OVER!')
+                            msgbox.addstr(3, 7, 'GAME OVER!')
+                            msgbox.addstr(5, 2, '(q) ✖')
+                            msgbox.addstr(5, 9, '(r) ↻')
+                            msgbox.addstr(5, 16, '(o) ≡')
                             msgbox.refresh()
                             mixer.music.stop()
+                            mixer.music.rewind()
+                            death.play()
                             state = cst.GAMEOVER
+                            continue  # skip rest of loop for clean transition?
                     elif gu:
                         tmp_ghosts.append(g)
                 ghosts = tmp_ghosts
@@ -313,7 +325,8 @@ def gameloop(stdscr):
                         msgbox.bkgdset(' ', curses.color_pair(0))
                         msgbox.erase()
                         msgbox.box()
-                        msgbox.addstr(3, 7, 'PAUSE')
+                        msgbox.addstr(3, 9, 'PAUSE')
+                        mixer.music.pause()
                         msgbox.refresh()
                         while True:
                             c = stdscr.getch()
@@ -322,6 +335,7 @@ def gameloop(stdscr):
                             if c == 113:
                                 run = False
                                 break
+                        mixer.music.unpause()
                         msgbox.erase()
                         msgbox.clear()
                         msgbox.refresh()
@@ -346,21 +360,26 @@ def gameloop(stdscr):
                     score += 1
 
             case cst.GAMEOVER:
+                pacman.clear()
                 c = stdscr.getch()
                 match c:
                     case 113:  # q
                         run = False
-                # while True:
-                #     c = stdscr.getch()
-                #     if c == 112:
-                #         break
-                #     if c == 113:
-                #         run = False
-                #         break
-                # msgbox.erase()
-                # msgbox.clear()
-                # msgbox.refresh()
-
+                    case 114:  # r
+                        # restart!
+                        pass
+                    case 111:  # o
+                        # go to menu
+                        msgbox.erase()
+                        msgbox.clear()
+                        msgbox.refresh()
+                        playwin.erase()
+                        playwin.clear()
+                        playwin.refresh()
+                        mixer.music.play()
+                        state = cst.MENU
+                    case _:
+                        pass
                 
 
         topwin.refresh()
