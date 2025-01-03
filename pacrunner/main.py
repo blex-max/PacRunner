@@ -11,6 +11,7 @@ import os
 os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = '1'  # the most egregious bullshit I've ever encountered in programming
 from pygame import mixer
 
+
 # consider config dataclass for accessing
 # system-specific (i.e. assinged with in main) constants
 # when separating into sub windows and so on
@@ -63,14 +64,9 @@ def gameloop(stdscr):
     # init vars
     # have an 'corner-of-eye difficulty (I like having it in a second screen region)'
     # implement startup menu with settings
-    # implement pause - done
-    # implement forward/backward movement of pacman - done!
-    # implement coins and powerups - done!
-    # implement sound
     # implement instructions and score at sides
     # implement yom yom every milestone
     # implement powerpill! on power pill
-    # fix ghost anim - done
     # implement increasing track strobe speed with increasing difficulty
     diff_period = 2000  # higher is slower
     ghost_spawn_period = int(diff_period // 4)
@@ -131,8 +127,9 @@ def gameloop(stdscr):
     menu_play = 'play (y)'
     menu_diff = 'difficulty: 100 (←→)'
     menu_pause = 'pause (p)'
+    flip_mute = 0
+    mute = 0
     while run:
-        # state-independent actions
         if startup_finished:
             stdscr.addstr(1, 0, 'sound: on (m)')
             stdscr.addstr(3, 0, 'score: {}'.format(score))
@@ -143,6 +140,15 @@ def gameloop(stdscr):
                 mixer.music.load('sound/mainloop.wav')
                 mixer.music.play()
                 intro_finished = 0
+
+        if flip_mute:
+            if not mute:
+                mixer.pause()
+                mute = 1
+            if mute:
+                mixer.unpause()
+                mute = 0
+            flip_mute = 0
 
         # probably make anything which has it's own time senstive logic into an object with a timer reference
         # including strings
@@ -165,6 +171,8 @@ def gameloop(stdscr):
                 match c:
                     case 113:  # q
                         break
+                    case 109:  # m
+                        flip_mute = 1
                     case curses.KEY_LEFT:
                         pass  # change difficulty
                     case curses.KEY_RIGHT:
@@ -256,8 +264,14 @@ def gameloop(stdscr):
                         if powerup.eatme:
                             g.clear()
                             score += 10
-                        else:
-                            run = False
+                        else:  # state transition
+                            msgbox.bkgdset(' ', curses.color_pair(0))
+                            msgbox.erase()
+                            msgbox.box()
+                            msgbox.addstr(3, 5, 'GAME OVER!')
+                            msgbox.refresh()
+                            mixer.music.stop()
+                            state = cst.GAMEOVER
                     elif gu:
                         tmp_ghosts.append(g)
                 ghosts = tmp_ghosts
@@ -313,6 +327,8 @@ def gameloop(stdscr):
                         msgbox.refresh()
                     case 113:  # q
                         break
+                    case 109:  # m
+                        flip_mute = 1
                     case curses.KEY_LEFT:
                         pacman.move_x(0)
                     case curses.KEY_RIGHT:
@@ -328,6 +344,24 @@ def gameloop(stdscr):
 
                 if tck.cmod(100):  # 1s
                     score += 1
+
+            case cst.GAMEOVER:
+                c = stdscr.getch()
+                match c:
+                    case 113:  # q
+                        run = False
+                # while True:
+                #     c = stdscr.getch()
+                #     if c == 112:
+                #         break
+                #     if c == 113:
+                #         run = False
+                #         break
+                # msgbox.erase()
+                # msgbox.clear()
+                # msgbox.refresh()
+
+                
 
         topwin.refresh()
         playwin.refresh()
