@@ -6,6 +6,7 @@ GAME = 1
 STARTUP = 2
 GAMEOVER = 3
 SCORES = 4
+NAME = 5
 
 TITLE = r"""
 __________                __________                                       ._.

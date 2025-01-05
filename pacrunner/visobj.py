@@ -144,7 +144,7 @@ class CoinRun:
                         init_lx + i,
                         1,
                         attr))
-        if True if random.random() > 0.6 else False:  # add big
+        if True if random.random() > 0.9 else False:  # add big
             self.coinl.append(Coin(self.__stdscr_ref,
                             init_y,
                             init_lx + i + 1,
