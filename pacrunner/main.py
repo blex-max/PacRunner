@@ -201,6 +201,7 @@ def gameloop(stdscr):
         # including strings
         match state:
             case cst.STARTUP:
+                stdscr.refresh()  # necessary for other machines???? weird
                 stdscr.addstr(int(mh // 2), int(mw // 2) - 1 - int(len(startup1) // 2), startup1, curses.color_pair(7))
                 if tck.counter > 200:
                     stdscr.addstr(int(mh // 2), int(mw // 2) + int(len(startup1) // 2), startup2, curses.color_pair(7))
