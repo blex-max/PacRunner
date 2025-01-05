@@ -3,3 +3,4 @@ poetry.lock
 .DS_Store
 dist/
 debug-main.py
+sc.dat

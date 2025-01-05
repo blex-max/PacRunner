@@ -456,7 +456,7 @@ class Ghost:
         if self.__ticker_ref.mod(self._mvfreq):
             if not self._mvblock:
                 self.clear()
-                self.move_x(1, 2)
+                self.move_x(1, 1)
                 self._mvblock = True
         elif self._mvblock:
             self._mvblock = False

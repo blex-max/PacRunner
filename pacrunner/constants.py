@@ -5,6 +5,7 @@ MENU = 0
 GAME = 1
 STARTUP = 2
 GAMEOVER = 3
+SCORES = 4
 
 TITLE = r"""
 __________                __________                                       ._.
