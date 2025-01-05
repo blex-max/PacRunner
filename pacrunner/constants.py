@@ -7,6 +7,8 @@ STARTUP = 2
 GAMEOVER = 3
 SCORES = 4
 NAME = 5
+PAUSE = 6
+MANUAL = 7
 
 TITLE = r"""
 __________                __________                                       ._.

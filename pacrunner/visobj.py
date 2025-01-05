@@ -359,6 +359,15 @@ class Player:
                                 self.px,
                                 repch)
 
+    def clearall(self,
+                 repch = cst.GRIDCH):
+        self.__stdscr_ref.addch(self.py,
+                                self.px,
+                                repch)
+        self.__stdscr_ref.addch(self.y,
+                                self.x,
+                                repch)
+
     def update(self):
         if self.__ticker_ref.mod(self.anim_freq):
             if not self.__anim_block:
