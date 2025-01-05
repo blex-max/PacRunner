@@ -11,7 +11,6 @@ import os
 os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = '1'  # the most egregious bullshit I've ever encountered in programming
 from pygame import mixer
 import pickle
-from os import path
 
 
 # consider config dataclass for accessing
@@ -19,12 +18,14 @@ from os import path
 # when separating into sub windows and so on
 def gameloop(stdscr):
     # very fragile high scores
-    if not path.exists('sc.dat'):
+    install_dir = os.path.dirname(os.path.abspath(__file__))
+    score_path = os.path.join(install_dir, 'sc.dat')
+    if not os.path.exists(score_path):
         high_scores = [('---', 0) for x in range(0,6)]
-        with open('sc.dat', 'wb') as f:
+        with open(score_path, 'wb') as f:
             pickle.dump(high_scores, f)
     else:
-        with open('sc.dat', 'rb') as f:
+        with open(score_path, 'rb') as f:
             high_scores: list[tuple[str, int]] = pickle.load(f)
         high_scores = high_scores[0:6]
     high_scores = sorted(high_scores, key=lambda x: x[1], reverse=True)
@@ -549,7 +550,7 @@ def gameloop(stdscr):
                     high_scores.append((name, score))
                     high_scores = sorted(high_scores, key=lambda x: x[1], reverse=True)
                     high_scores.pop()
-                    with open('sc.dat', 'wb') as f:
+                    with open(score_path, 'wb') as f:
                         pickle.dump(high_scores, f)
                 msgbox.refresh()
 
