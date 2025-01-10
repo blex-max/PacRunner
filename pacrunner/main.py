@@ -3,12 +3,11 @@ import curses
 from tickpy.ticker import IncTicker
 from pacrunner import constants as cst
 from pacrunner import visobj as vo
-from pacrunner import artfunc as af
 import random as rnd
 import time
 from typing import Literal
 import os
-os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = '1'  # the most egregious bullshit I've ever encountered in programming
+os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = '1'  # the most egregious bullsh*t I've ever encountered in programming
 from pygame import mixer
 import pickle
 
@@ -21,7 +20,7 @@ def gameloop(stdscr):
     install_dir = os.path.dirname(os.path.abspath(__file__))
     score_path = os.path.join(install_dir, 'sc.dat')
     if not os.path.exists(score_path):
-        high_scores = [('---', 0) for x in range(0,6)]
+        high_scores = [('---', 0)] * 6
         with open(score_path, 'wb') as f:
             pickle.dump(high_scores, f)
     else:
@@ -62,7 +61,6 @@ def gameloop(stdscr):
         stdscr.refresh()
         time.sleep(3)
         exit(1)
-
     curses.set_escdelay(1)
     topwin = stdscr.subwin(cst.TITLE_H,
                            mw,
@@ -89,17 +87,12 @@ def gameloop(stdscr):
     # init game loop
     # init vars
     # have an 'corner-of-eye difficulty (I like having it in a second screen region)'
-    # implement startup menu with settings
-    # implement instructions and score at sides
     # implement yom yom every milestone
     # implement powerpill! on power pill
-    # implement increasing track strobe speed with increasing difficulty
     diff_period = 600  # higher is slower
-    diff_multiplier = 1600
-    ghost_spawn_period = int(diff_multiplier // 4)
-    coin_spawn_period = int(diff_multiplier // 7)
+    init_diff_multiplier = 1600
     diff_mod = 55
-    item_speed = 60
+    init_item_speed = 60
 
     init_player_x = (cst.HERO_REL_X * track_x_spc) + cst.PLAYWIN_HMAR
     tck = IncTicker(0.01)
@@ -168,7 +161,6 @@ def gameloop(stdscr):
             stdscr.addstr(cst.PLAYWIN_Y_OFFSET + cst.PLAYWIN_H + 1, (mw // 2) - (playwin_x_w // 2), 'sound: {} (m) '.format('off' if mute else 'on'), curses.color_pair(7))
             stdscr.addstr(cst.PLAYWIN_Y_OFFSET + cst.PLAYWIN_H + 1, (mw // 2) - (playwin_x_w // 2) + 21, '(ESC): quit', curses.color_pair(7))
             stdscr.addstr(cst.PLAYWIN_Y_OFFSET + cst.PLAYWIN_H + 1, (mw // 2) - (playwin_x_w // 2) + 40, '(p): pause', curses.color_pair(7))
-            stdscr.addstr(cst.PLAYWIN_Y_OFFSET, 2 + (mw // 2) - (playwin_x_w // 2), 'score: {}'.format(score), curses.color_pair(7))
 
             # debug displays
             # stdscr.addstr(8, 0, 'diff_multiplier: {}  '.format(diff_multiplier))
@@ -222,6 +214,7 @@ def gameloop(stdscr):
                 # playwin.addstr(2, pw_cntpos - int(len(menu_diff) // 2) - 2, menu_diff, curses.color_pair(7))  # LR arrows
                 playwin.addstr(2, pw_cntpos - int(len(menu_scores) // 2), menu_scores, curses.color_pair(7))
                 playwin.addstr(3, pw_cntpos - int(len(menu_manual) // 2), menu_manual, curses.color_pair(7))
+                playwin.addstr(0, 2, 'score: {}'.format(score), curses.color_pair(7))
                 c = stdscr.getch()
                 match c:
                     case 27:  # q
@@ -276,11 +269,19 @@ def gameloop(stdscr):
                         cst.TRACK_UY_BOUND,
                         cst.PLAYWIN_HMAR + 1
                     )
+                    # perhaps it's more fun to be able to jump back in at the same difficulty...
+                    # maybe a run could consist of 3 lives?
+                    diff_multiplier = init_diff_multiplier
+                    ghost_spawn_period = int(diff_multiplier // 4)
+                    coin_spawn_period = int(diff_multiplier // 7)
+                    item_speed = init_item_speed
                     init_game = 0
+
                 # strobe title and edges
                 main_title.strobe(stdscr)
                 upper_track.strobe(playwin)
                 lower_track.strobe(playwin)
+                playwin.addstr(0, 2, 'score: {}'.format(score), curses.color_pair(7))
 
                 if tck.cmod(diff_period):
                     if diff_multiplier > 300:
