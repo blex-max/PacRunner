@@ -6,7 +6,7 @@ authors = ["blex-max <ablex7@gmail.com>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = "^3.13"
+python = "^3.10"
 tickpy = {git = "https://github.com/blex-max/pytick"}
 pygame = "^2.6.1"
 
