@@ -22,7 +22,7 @@ pacrunner
 
 ## Audio
 
-In game sounds were downloaded from [classicgaming.cc](https://classicgaming.cc/classics/pac-man/sounds). The music is a short extract from a bootleg remix of the pacman theme by Powerpill. Powerpill an alias of a famous british electronic artist who probably doesn't need introduction. These usages are not endorsed.
+In game sounds were downloaded from [classicgaming.cc](https://classicgaming.cc/classics/pac-man/sounds). The music is a short extract from Power-Pill - Pac-Man, a bootleg remix of the pacman theme. These usages are not endorsed.
 
 ## TODO
 
