@@ -1,13 +1,13 @@
 # PacRunner
 
-A simple curses program implemented via python curses reimagining our favourite munching semicircle into a sidescrolling runner game. YomYom!
+An ncurses reimagining of our favourite munching semicircle - as a sidescrolling runner game! YomYom! Implemented with Python curses.
 
 ## Dependencies
 
 - Python (written and tested with 3.13, but I don't knowingly use any features introduced after 3.10)
 - Poetry (tested with >= 1.8.4)
 
-The project relies on only two further libraries, installation of which will be handled automatically.
+The project relies on only two further libraries, installation of which should be handled automatically by poetry.
 
 ## Installation
 
@@ -22,7 +22,7 @@ pacrunner
 
 ## Audio
 
-In game sounds were downloaded from [classicgaming.cc](https://classicgaming.cc/classics/pac-man/sounds). The music is a short extract from Power-Pill - Pac-Man, a bootleg remix of the pacman theme. These usages are not endorsed.
+In-game sounds were downloaded from [classicgaming.cc](https://classicgaming.cc/classics/pac-man/sounds). The music is a short extract from Power-Pill - Pac-Man, a bootleg remix of the pacman theme. These usages are not endorsed.
 
 ## TODO
 
