@@ -38,7 +38,7 @@ Once I'm happy with those we'll have a v1.0 release
 
 I'd be happy to add further features if players desired them - please make requests on this github and if there's any interest I'll collate them into a v2 release
 
-## Licence 
+## License 
 
-TBD
+GPL v3 - you know the deal ;). Applies to all code herein. Sound assets not included as they are not mine.
  
