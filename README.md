@@ -1,6 +1,6 @@
 # PacRunner
 
-An ncurses reimagining of our favourite munching semicircle - as a sidescrolling runner game! YomYom! Implemented with Python curses.
+An ncurses reimagining of our favourite munching semicircle - as a sidescrolling runner game! Implemented with Python curses.
 
 ## Dependencies
 
