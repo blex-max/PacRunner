@@ -4,7 +4,7 @@ An ncurses reimagining of our favourite munching semicircle - as a sidescrolling
 
 ## Dependencies
 
-- Python (written and tested with 3.13, but I don't knowingly use any features introduced after 3.10)
+- Python >=3.13
 - Poetry (tested with >= 1.8.4)
 
 The project relies on only two further libraries, installation of which should be handled automatically by poetry.
