@@ -52,7 +52,7 @@ def gameloop(stdscr):
     # check for screen too small
     mh, mw = stdscr.getmaxyx()
     if mh < (cst.PLAYWIN_Y_OFFSET + cst.PLAYWIN_H):
-        stdscr.addstr('sorry, screen too small! (vertical)')
+        stdscr.addstr('sorry, screen too small! (vertical)')  # this would be better as an exit code which determines a stderr message
         stdscr.refresh()
         time.sleep(3)
         exit(1)
