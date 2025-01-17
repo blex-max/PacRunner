@@ -15,4 +15,4 @@ requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.scripts]
-pacrunner = "pacrunner.main:main"
+pacrunner = "pacrunner.pacrunner:cli"

@@ -10,13 +10,18 @@ import os
 os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = '1'  # the most egregious bullsh*t I've ever encountered in programming
 from pygame import mixer
 import pickle
+import argparse
+from pacrunner.sound import Sound
+from collections import namedtuple
 
 
 # consider config dataclass for accessing
 # system-specific (i.e. assinged with in main) constants
 # when separating into sub windows and so on
-def gameloop(stdscr):
-    # very fragile high scores
+def gameloop(stdscr,
+             start_mute,
+             title_anim,
+             skip_splash):
     install_dir = os.path.dirname(os.path.abspath(__file__))
     score_path = os.path.join(install_dir, 'sc.dat')
     if not os.path.exists(score_path):
@@ -33,13 +38,8 @@ def gameloop(stdscr):
     mixer.init()
     mixer.music.load('sound/intro.wav')
     music_vol = mixer.music.get_volume()  # default seems fine
-    death = mixer.Sound('sound/gameover.wav')
-    pill_sound = mixer.Sound('sound/pacman_eatfruit.wav')
-    eatghost_sound = mixer.Sound('sound/pacman_eatghost.wav')
-    sound_vol = 0.55
-    death.set_volume(sound_vol)
-    pill_sound.set_volume(0.15)
-    eatghost_sound.set_volume(0.15)
+    SB = namedtuple('Soundboard', ['death', 'eat', 'pill'])
+    sb = SB(Sound('sound/gameover.wav', 0.55), Sound('sound/pacman_eatfruit.wav', 0.15), Sound('sound/pacman_eatghost.wav', 0.15))
 
     # curses init
     stdscr.clear()
@@ -66,7 +66,6 @@ def gameloop(stdscr):
                            mw,
                            cst.TITLE_Y_OFFSET,
                            0)
-    playwin_x_mar = mw // 6
     playwin_x_w = 50 # int(mw - (playwin_x_mar * 2))  # 50 is a shorter track, preferable for now I think
     track_x_w = (playwin_x_w - (2 * cst.PLAYWIN_HMAR))
     # x_spc is really about hero move dist
@@ -77,7 +76,6 @@ def gameloop(stdscr):
                             cst.PLAYWIN_Y_OFFSET,
                             (mw // 2) - (playwin_x_w // 2))
     playwin.attrset(curses.color_pair(4))
-    pmh, pmw = playwin.getmaxyx()
     msgbox = playwin.derwin(cst.PLAYWIN_H - 2,
                             23,
                             1,
@@ -146,7 +144,7 @@ def gameloop(stdscr):
     # menu_diff = 'difficulty: 100 (←→)'
     menu_scores = 'scores! (s)'
     menu_manual = 'instructions (i)'
-    flip_mute = 0
+    flip_mute = start_mute
     mute = 0
     name: str = '???'
     init_game = 1
@@ -177,15 +175,13 @@ def gameloop(stdscr):
         if flip_mute:
             if not mute:
                 mixer.music.set_volume(0)
-                death.set_volume(0)
-                pill_sound.set_volume(0)
-                eatghost_sound.set_volume(0)
+                for s in sb:
+                    s.mute()
                 mute = 1
             elif mute:
                 mixer.music.set_volume(music_vol)
-                death.set_volume(sound_vol)
-                pill_sound.set_volume(0.15)
-                eatghost_sound.set_volume(0.15)
+                for s in sb:
+                    s.unmute()
                 mute = 0
             flip_mute = 0
 
@@ -198,7 +194,7 @@ def gameloop(stdscr):
                 if tck.counter > 200:
                     stdscr.addstr(int(mh // 2), int(mw // 2) + int(len(startup1) // 2), startup2, curses.color_pair(7))
                     if not bell_played:
-                        pill_sound.play()
+                        sb.pill.play()
                         bell_played = 1
                 if tck.counter > 300:
                     stdscr.clear()
@@ -353,7 +349,7 @@ def gameloop(stdscr):
                 for g in ghosts:
                     if g.y == pacman.y and g.x == pacman.x:
                         if powerup.eatme:
-                            eatghost_sound.play()
+                            sb.eat.play()
                             g.clear()
                             score += 10
                         else:  # state transition
@@ -365,7 +361,7 @@ def gameloop(stdscr):
                             msgbox.refresh()
                             mixer.music.stop()
                             mixer.music.rewind()
-                            death.play()
+                            sb.death.play()
                             if score > high_scores[-1][1]:
                                 nch_entered = 0
                                 entry_finished = 0
@@ -398,7 +394,7 @@ def gameloop(stdscr):
                     if p.update():
                         tmp_pill.append(p)
                     if p.y == pacman.y and p.x == pacman.x:
-                        pill_sound.play()
+                        sb.pill.play()
                         powerup.eatme = True
                         playwin.addstr(0, playwin_x_w - len(pill_ind) - 2, pill_ind, curses.color_pair(7))
                         # 12s, plus some random element to keep you on your toes
@@ -620,7 +616,26 @@ def gameloop(stdscr):
         tck.update()
 
 
-def main():
-    curses.wrapper(gameloop)
+def cli():
+    pr = argparse.ArgumentParser(prog='PacRunner',
+                                 description='An ncurses reimagining of our favourite munching semicircle - as a sidescrolling runner game! N.B. sound and strobing animation warning!')
+    pr.add_argument('-m',
+                    '--mute',
+                    action='store_true',
+                    help='start game with sound muted')
+    pr.add_argument('-t',
+                    '--no-strobe',
+                    action='store_true',
+                    help='disable strobing title animation')
+    pr.add_argument('-s',
+                    '--skip-dedication',
+                    action='store_true',
+                    help='disable intro splash')
+    args = pr.parse_args()
+
+    curses.wrapper(gameloop,
+                   args.mute,
+                   ~args.no_strobe,
+                   args.skip_dedication)
     print('thanks for playing!')
     sys.exit(0)
