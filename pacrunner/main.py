@@ -1,6 +1,6 @@
 import sys
 import curses
-from tickpy.ticker import IncTicker
+from tickpy.ticker import ExtTicker
 from pacrunner import constants as cst
 from pacrunner import visobj as vo
 import random as rnd
@@ -95,7 +95,7 @@ def gameloop(stdscr):
     init_item_speed = 60
 
     init_player_x = (cst.HERO_REL_X * track_x_spc) + cst.PLAYWIN_HMAR
-    tck = IncTicker(0.01)
+    tck = ExtTicker(0.01)
     ghosts = []
     coins = []
     pill = []

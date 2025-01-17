@@ -7,9 +7,8 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "^3.13"
-tickpy = {git = "https://github.com/blex-max/pytick"}
+tickpy = "0.4.0"
 pygame = "^2.6.1"
-
 
 [build-system]
 requires = ["poetry-core"]

@@ -1,7 +1,7 @@
 # if this gets complicated, consider parent class, or composing move, draw, obj
 # abstract classes and so on
 from pacrunner import constants as cst
-from tickpy.ticker import IncTicker
+from tickpy.ticker import ExtTicker
 import curses
 import random
 from random import sample
@@ -17,7 +17,7 @@ class Edible:
 class Pill:
     def __init__(self,
                  stdscr,
-                 ticker: IncTicker,
+                 ticker: ExtTicker,
                  mvfreq: int,
                  init_y: int,
                  init_x: int,
@@ -119,7 +119,7 @@ class Coin:
 class CoinRun:
     def __init__(self,
                  stdscr,
-                 ticker: IncTicker,
+                 ticker: ExtTicker,
                  mvfreq: int,
                  init_y: int,
                  init_lx: int,
@@ -203,7 +203,7 @@ class CoinRun:
 class SingleLineStrobe():
     def __init__(self,
                  text: str,
-                 ticker: IncTicker,
+                 ticker: ExtTicker,
                  animfreq: int,
                  draw_y: int,
                  draw_x: int,
@@ -254,7 +254,7 @@ class SingleLineStrobe():
 class MultiLineStrobe():
     def __init__(self,
                  strl: list[str],
-                 ticker: IncTicker,
+                 ticker: ExtTicker,
                  animfreq: int,
                  normal_draw_y: int,
                  normal_draw_x: int,
@@ -299,7 +299,7 @@ class MultiLineStrobe():
 class Player:
     def __init__(self,
                  stdscr,
-                 ticker: IncTicker,
+                 ticker: ExtTicker,
                  init_y,
                  init_x,
                  init_attr: int,
@@ -391,7 +391,7 @@ class Player:
 class Ghost:
     def __init__(self,
                  stdscr,
-                 ticker: IncTicker,
+                 ticker: ExtTicker,
                  edible_ref: Edible,
                  mvfreq: int,
                  animfreq: int,
