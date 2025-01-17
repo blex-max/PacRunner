@@ -1,7 +1,6 @@
 import sys
 import curses
 from tickpy.ticker import ExtTicker
-from pacrunner.constants import *  # all CONSTANTS to be found here
 from pacrunner import visobj as vo
 import random as rnd
 import os
@@ -11,6 +10,98 @@ import pickle
 import argparse
 from pacrunner.sound import Sound
 from collections import namedtuple
+from enum import IntEnum, auto
+from pacrunner import artfunc as af
+
+#################
+#~~ CONSTANTS ~~#
+################
+# ExitCodes
+class EC(IntEnum):
+    EXIT_SUCCESS = 0
+    EXIT_HORIZONTAL = auto()
+    EXIT_VERTICAL = auto()
+
+
+# FSM states
+class S(IntEnum):
+    MENU = 0
+    GAME = auto()
+    STARTUP = auto()
+    GAMEOVER = auto()
+    SCORES = auto()
+    NAME = auto()
+    PAUSE = auto()
+    MANUAL = auto()
+
+TITLE = r"""
+__________                __________                                       ._.
+\______   \_____     ____ \______   \ __ __   ____    ____    ____ _______ | |
+ |     ___/\__  \  _/ ___\ |       _/|  |  \ /    \  /    \ _/ __ \\_  __ \| |
+ |    |     / __ \_\  \___ |    |   \|  |  /|   |  \|   |  \\  ___/ |  | \/ \|
+ |____|    (____  / \___  >|____|_  /|____/ |___|  /|___|  / \___  >|__|    __
+                \/      \/        \/             \/      \/      \/         \/
+"""
+TITLE_XMAG = af.art_width(TITLE)
+TITLE_LINES: list = af.art2lines(TITLE)
+TITLE_YMAG = len(TITLE_LINES)
+
+YOMYOM = r"""
+_____.___.             _____.___.             ._.
+\__  |   | ____   _____\__  |   | ____   _____| |
+ /   |   |/  _ \ /     \/   |   |/  _ \ /     | |
+ \____   (  <_> |  Y Y  \____   (  <_> |  Y Y  \|
+ / ______|\____/|__|_|  / ______|\____/|__|_|  __
+ \/                   \/\/                   \/\/
+"""
+
+POWERPILL = r"""
+__________                              __________ .__ .__   .__  ._.
+\______   \ ____ __  _  __  ____ _______\______   \|__||  |  |  | | |
+ |     ___//  _ \\ \/ \/ /_/ __ \\_  __ \|     ___/|  ||  |  |  | | |
+ |    |   (  <_> )\     / \  ___/ |  | \/|    |    |  ||  |__|  |__\|
+ |____|    \____/  \/\_/   \___  >|__|   |____|    |__||____/|____/__
+                               \/                                  \/
+"""
+
+HEROOPENCH = 'ᗧ'
+HEROCLOSEDCH = 'ᗡ'
+GRIDCH = ' '
+EDGECH = '-'
+GHOSTCH_L = ['ᗣ', 'ᙁ', 'ᙉ', 'ᑛ', 'ᑜ', 'ᗩ']
+BIGCOINCH = 'Ø'
+SMALLCOINCH = '·'
+PILLCH = '⦷'  # or θ (note italics)
+
+COLOR_L = [curses.COLOR_RED,
+           curses.COLOR_YELLOW,
+           curses.COLOR_GREEN,
+           curses.COLOR_CYAN,
+           curses.COLOR_BLUE,
+           curses.COLOR_MAGENTA,
+           curses.COLOR_WHITE]
+
+TITLE_Y_OFFSET = 0
+
+
+TRACK_XMAG = 38
+TRACK_YMAG = 3
+TITLE_PLAYWIN_PAD = 2
+PLAYWIN_Y_OFFSET = TITLE_Y_OFFSET + TITLE_YMAG + TITLE_PLAYWIN_PAD
+PLAYWIN_VMAR = 3  # inclusive margin
+PLAYWIN_YMAG = TRACK_YMAG + (PLAYWIN_VMAR * 2)
+PLAYWIN_XMAR = 6
+PLAYWIN_YO = PLAYWIN_YMAG // 2
+HERO_REL_X = 4
+TRACK_REL_Y_BOUND = TRACK_YMAG // 2
+TRACK_DY_BOUND = PLAYWIN_YO + TRACK_REL_Y_BOUND
+TRACK_UY_BOUND = PLAYWIN_YO - TRACK_REL_Y_BOUND
+
+
+PLAYWIN_XMAG = TRACK_XMAG + PLAYWIN_XMAR*2
+TRACK_RX_BOUND = PLAYWIN_XMAG - PLAYWIN_XMAR
+TRACK_LEN = (PLAYWIN_XMAG - (2 * PLAYWIN_XMAR))
+INIT_PLAYER_X = PLAYWIN_XMAR + 8
 
 
 # consider config dataclass for accessing
@@ -22,7 +113,7 @@ def gameloop(stdscr,
              skip_splash) -> int:
     # check for screen too small
     mh, mw = stdscr.getmaxyx()
-    if mh < (PLAYWIN_Y_OFFSET + PLAYWIN_H):
+    if mh < (PLAYWIN_Y_OFFSET + PLAYWIN_YMAG):
         return EC.EXIT_VERTICAL
     if mw < (100):
         return EC.EXIT_HORIZONTAL
@@ -57,21 +148,16 @@ def gameloop(stdscr,
         curses.init_pair(i + 1, color, -1)  # -1 for default background
 
     # set up game windows
-    topwin = stdscr.subwin(TITLE_H,
-                           mw,
-                           TITLE_Y_OFFSET,
-                           0)
-    playwin_x_w = 50  # determines track length
-    track_x_w = (playwin_x_w - (2 * PLAYWIN_HMAR))
-    # x_spc is really about hero move dist
-    track_x_spc = track_x_w // (TRACK_W - 1)  # this should be reconceptualised
-    track_rx_bound = PLAYWIN_HMAR + (TRACK_W - 1) * track_x_spc
-    playwin = stdscr.subwin(PLAYWIN_H,
-                            playwin_x_w,
+    titlewin = stdscr.subwin(TITLE_YMAG,
+                             mw,
+                             TITLE_Y_OFFSET,
+                             0)
+    playwin = stdscr.subwin(PLAYWIN_YMAG,
+                            PLAYWIN_XMAG,
                             PLAYWIN_Y_OFFSET,
-                            (mw // 2) - (playwin_x_w // 2))
+                            (mw // 2) - (PLAYWIN_XMAG // 2))
     playwin.attrset(curses.color_pair(4))
-    msgbox = playwin.derwin(PLAYWIN_H - 2,
+    msgbox = playwin.derwin(PLAYWIN_YMAG - 2,
                             23,
                             1,
                             13)
@@ -87,7 +173,6 @@ def gameloop(stdscr,
     diff_mod = 55
     init_item_speed = 60
 
-    init_player_x = (HERO_REL_X * track_x_spc) + PLAYWIN_HMAR
     tck = ExtTicker(0.01)
     ghosts = []
     coins = []
@@ -98,25 +183,25 @@ def gameloop(stdscr,
     # breakpoint()
     # try alternative track animations as this might be too distracting
     # like moving - space - space
-    upper_track = vo.SingleLineStrobe('─' * (playwin_x_w - (PLAYWIN_HMAR * 2)),
+    upper_track = vo.SingleLineStrobe('─' * (PLAYWIN_XMAG - (PLAYWIN_XMAR * 2)),
                                       ticker=tck,
                                       animfreq=8,
                                       draw_y=PLAYWIN_VMAR - 1,
-                                      draw_x=PLAYWIN_HMAR,
+                                      draw_x=PLAYWIN_XMAR,
                                       color_offset=0,
                                       color_wrap=3)
-    lower_track = vo.SingleLineStrobe('─' * (playwin_x_w - (PLAYWIN_HMAR * 2)),
+    lower_track = vo.SingleLineStrobe('─' * (PLAYWIN_XMAG - (PLAYWIN_XMAR * 2)),
                                       ticker=tck,
                                       animfreq=8,
-                                      draw_y=PLAYWIN_H - 3,
-                                      draw_x=PLAYWIN_HMAR,
+                                      draw_y=PLAYWIN_YMAG - 3,
+                                      draw_x=PLAYWIN_XMAR,
                                       color_offset=0,
                                       color_wrap=3)
-    main_title = vo.MultiLineStrobe(TITLE_L,  # type: ignore
+    main_title = vo.MultiLineStrobe(TITLE_LINES,
                                     ticker=tck,
                                     animfreq=5,
                                     normal_draw_y=TITLE_Y_OFFSET,
-                                    normal_draw_x=((mw // 2) - (TITLE_W // 2)),
+                                    normal_draw_x=((mw // 2) - (TITLE_XMAG // 2)),
                                     color_offset=0,
                                     color_wrap=10)
     hiscore_sign = vo.SingleLineStrobe('HISCORE!',
@@ -148,12 +233,12 @@ def gameloop(stdscr,
     ghost_inst = 'ᗣ - avoid the ghosts!'
     pill_inst = '⦷ - now eat the ghosts!'
     pill_ind = 'powerpill!'
-    pw_cntpos = int(playwin_x_w // 2) + 1
+    pw_cntpos = int(PLAYWIN_XMAG // 2) + 1
     while run:
         if startup_finished:
-            stdscr.addstr(PLAYWIN_Y_OFFSET + PLAYWIN_H + 1, (mw // 2) - (playwin_x_w // 2), 'sound: {} (m) '.format('off' if mute else 'on'), curses.color_pair(7))
-            stdscr.addstr(PLAYWIN_Y_OFFSET + PLAYWIN_H + 1, (mw // 2) - (playwin_x_w // 2) + 21, '(ESC): quit', curses.color_pair(7))
-            stdscr.addstr(PLAYWIN_Y_OFFSET + PLAYWIN_H + 1, (mw // 2) - (playwin_x_w // 2) + 40, '(p): pause', curses.color_pair(7))
+            stdscr.addstr(PLAYWIN_Y_OFFSET + PLAYWIN_YMAG + 1, (mw // 2) - (PLAYWIN_XMAG // 2), 'sound: {} (m) '.format('off' if mute else 'on'), curses.color_pair(7))
+            stdscr.addstr(PLAYWIN_Y_OFFSET + PLAYWIN_YMAG + 1, (mw // 2) - (PLAYWIN_XMAG // 2) + 21, '(ESC): quit', curses.color_pair(7))
+            stdscr.addstr(PLAYWIN_Y_OFFSET + PLAYWIN_YMAG + 1, (mw // 2) - (PLAYWIN_XMAG // 2) + 40, '(p): pause', curses.color_pair(7))
 
             # debug displays
             # stdscr.addstr(8, 0, 'diff_multiplier: {}  '.format(diff_multiplier))
@@ -200,7 +285,7 @@ def gameloop(stdscr,
 
             case S.MENU:
                 main_title.color_wrap = 10
-                main_title.strobe(topwin)
+                main_title.strobe(titlewin)
                 playwin.addstr(1, pw_cntpos - int(len(menu_play) // 2), menu_play, curses.color_pair(7))
                 # playwin.addstr(2, pw_cntpos - int(len(menu_diff) // 2) - 2, menu_diff, curses.color_pair(7))  # LR arrows
                 playwin.addstr(2, pw_cntpos - int(len(menu_scores) // 2), menu_scores, curses.color_pair(7))
@@ -253,12 +338,12 @@ def gameloop(stdscr,
                         playwin,
                         tck,
                         PLAYWIN_YO,
-                        init_player_x,
+                        INIT_PLAYER_X,
                         curses.color_pair(1) | curses.A_BOLD,
                         TRACK_DY_BOUND,
-                        track_rx_bound - 1,
+                        TRACK_RX_BOUND - 1,
                         TRACK_UY_BOUND,
-                        PLAYWIN_HMAR + 1
+                        PLAYWIN_XMAR + 1
                     )
                     # perhaps it's more fun to be able to jump back in at the same difficulty...
                     # maybe a run could consist of 3 lives?
@@ -295,11 +380,11 @@ def gameloop(stdscr,
                                                [5,7],
                                                rnd.randint(TRACK_UY_BOUND,
                                                            TRACK_DY_BOUND),
-                                               track_rx_bound,
+                                               TRACK_RX_BOUND,
                                                TRACK_DY_BOUND,
-                                               track_rx_bound,
+                                               TRACK_RX_BOUND,
                                                TRACK_UY_BOUND,
-                                               PLAYWIN_HMAR))
+                                               PLAYWIN_XMAR))
                 # things with the same period won't be checked...
                 if tck.cmod(coin_spawn_period):
                     if rnd.random() > 0.2:  # max ghosts would be good
@@ -308,9 +393,9 @@ def gameloop(stdscr,
                                                 item_speed,
                                                 rnd.randint(TRACK_UY_BOUND,
                                                             TRACK_DY_BOUND),
-                                                track_rx_bound,
-                                                PLAYWIN_HMAR,
-                                                track_rx_bound,
+                                                TRACK_RX_BOUND,
+                                                PLAYWIN_XMAR,
+                                                TRACK_RX_BOUND,
                                                 curses.color_pair(2)))
                     if not pill and powerup_time < (tck.counter - 2500):
                         if rnd.random() > 0.1:
@@ -319,23 +404,23 @@ def gameloop(stdscr,
                                                 item_speed,
                                                 rnd.randint(TRACK_UY_BOUND,
                                                             TRACK_DY_BOUND),
-                                                track_rx_bound,
-                                                PLAYWIN_HMAR,
-                                                track_rx_bound,
+                                                TRACK_RX_BOUND,
+                                                PLAYWIN_XMAR,
+                                                TRACK_RX_BOUND,
                                                 [curses.color_pair(7),
                                                  curses.color_pair(5)]))
 
 
                 playwin.addch(TRACK_UY_BOUND,
-                              track_rx_bound,
+                              TRACK_RX_BOUND,
                               '░',
                               curses.color_pair(7))
                 playwin.addch(TRACK_UY_BOUND + 1,
-                              track_rx_bound,
+                              TRACK_RX_BOUND,
                               '░',
                               curses.color_pair(7))
                 playwin.addch(TRACK_UY_BOUND + 2,
-                              track_rx_bound,
+                              TRACK_RX_BOUND,
                               '░',
                               curses.color_pair(7))
 
@@ -391,7 +476,7 @@ def gameloop(stdscr,
                     if p.y == pacman.y and p.x == pacman.x:
                         sb.pill.play()
                         powerup.eatme = True
-                        playwin.addstr(0, playwin_x_w - len(pill_ind) - 2, pill_ind, curses.color_pair(7))
+                        playwin.addstr(0, PLAYWIN_XMAG - len(pill_ind) - 2, pill_ind, curses.color_pair(7))
                         # 12s, plus some random element to keep you on your toes
                         powerup_time = tck.counter + 1200 + rnd.randint(-200, 200)
                         p.clear()
@@ -400,7 +485,7 @@ def gameloop(stdscr,
 
                 if tck.counter > powerup_time:
                     if powerup.eatme:
-                        playwin.addstr(0, playwin_x_w - len(pill_ind) - 2, '─'*len(pill_ind), curses.color_pair(4))
+                        playwin.addstr(0, PLAYWIN_XMAG - len(pill_ind) - 2, '─'*len(pill_ind), curses.color_pair(4))
                     powerup.eatme = False
 
                 # usr input
@@ -433,11 +518,11 @@ def gameloop(stdscr,
                     score += 1
 
             case S.SCORES:
-                main_title.strobe(topwin)
-                playwin.addstr(1, int((playwin_x_w // 2) - 4), '{}: {}'.format(high_scores[0][0][0:3].upper(), str(high_scores[0][1])), curses.color_pair(2) | curses.A_BOLD)
+                main_title.strobe(titlewin)
+                playwin.addstr(1, int((PLAYWIN_XMAG // 2) - 4), '{}: {}'.format(high_scores[0][0][0:3].upper(), str(high_scores[0][1])), curses.color_pair(2) | curses.A_BOLD)
                 for i, s in enumerate(high_scores[1:]):
-                    playwin.addstr(2 + i, int((playwin_x_w // 2) - 4), '{}: {}'.format(s[0][0:3].upper(), str(s[1])), curses.color_pair(7))
-                playwin.addstr(i + 4, int((playwin_x_w // 2) - 4), '(o): ≡←', curses.color_pair(7))
+                    playwin.addstr(2 + i, int((PLAYWIN_XMAG // 2) - 4), '{}: {}'.format(s[0][0:3].upper(), str(s[1])), curses.color_pair(7))
+                playwin.addstr(i + 4, int((PLAYWIN_XMAG // 2) - 4), '(o): ≡←', curses.color_pair(7))
                 c = stdscr.getch()
                 match c:
                     case 109:
@@ -448,7 +533,7 @@ def gameloop(stdscr,
                         playwin.clear()
                         playwin.erase()
                         playwin.refresh()
-                        state = MENU
+                        state = S.MENU
                     
 
             case S.GAMEOVER:
@@ -475,7 +560,7 @@ def gameloop(stdscr,
                         playwin.refresh()
                         mixer.music.play()
                         init_game = 1
-                        state = GAME
+                        state = S.GAME
                     case 111:  # o
                         # go to menu
                         msgbox.erase()
@@ -485,7 +570,7 @@ def gameloop(stdscr,
                         playwin.clear()
                         playwin.refresh()
                         mixer.music.play()
-                        state = MENU
+                        state = S.MENU
                     case _:
                         pass
 
@@ -524,7 +609,7 @@ def gameloop(stdscr,
                     playwin.refresh()
                     mixer.music.play()
                     init_game = 1
-                    state = GAME
+                    state = S.GAME
                 elif c == 111:  # o
                     # go to menu
                     msgbox.erase()
@@ -534,12 +619,12 @@ def gameloop(stdscr,
                     playwin.clear()
                     playwin.refresh()
                     mixer.music.play()
-                    state = MENU
+                    state = S.MENU
                 elif c == 109:  # m
                     flip_mute = 1
 
                 # state exit block
-                if not run or state != NAME:
+                if not run or state != S.NAME:
                     high_scores.append((name, score))
                     high_scores = sorted(high_scores, key=lambda x: x[1], reverse=True)
                     high_scores.pop()
@@ -587,8 +672,8 @@ def gameloop(stdscr,
                             state = S.MENU
                 msgbox.refresh()
 
-            case MANUAL:
-                main_title.strobe(topwin)
+            case S.MANUAL:
+                main_title.strobe(titlewin)
                 playwin.addstr(2, pw_cntpos - int(len(move_inst) // 2), move_inst, curses.color_pair(7))
                 playwin.addstr(3, pw_cntpos - int(len(coin_inst) // 2), coin_inst, curses.color_pair(7))
                 playwin.addstr(4, pw_cntpos - int(len(ghost_inst) // 2), ghost_inst, curses.color_pair(7))
@@ -602,10 +687,10 @@ def gameloop(stdscr,
                         flip_mute = 1
                     case 111:
                         playwin.clear()
-                        state = MENU
+                        state = S.MENU
                     
 
-        topwin.refresh()
+        titlewin.refresh()
         playwin.refresh()
         # stdscr.refresh()
         tck.update()
