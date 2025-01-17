@@ -1,14 +1,25 @@
 from pacrunner import artfunc as af
 import curses
+from enum import IntEnum, auto
 
-MENU = 0
-GAME = 1
-STARTUP = 2
-GAMEOVER = 3
-SCORES = 4
-NAME = 5
-PAUSE = 6
-MANUAL = 7
+
+# ExitCodes
+class EC(IntEnum):
+    EXIT_SUCCESS = 0
+    EXIT_HORIZONTAL = auto()
+    EXIT_VERTICAL = auto()
+
+
+# FSM states
+class S(IntEnum):
+    MENU = 0
+    GAME = auto()
+    STARTUP = auto()
+    GAMEOVER = auto()
+    SCORES = auto()
+    NAME = auto()
+    PAUSE = auto()
+    MANUAL = auto()
 
 TITLE = r"""
 __________                __________                                       ._.
@@ -42,10 +53,10 @@ __________                              __________ .__ .__   .__  ._.
 
 HEROOPENCH = 'ᗧ'
 HEROCLOSEDCH = 'ᗡ'
-GRIDCH = ' '  # '·' if you want a nice grid
+GRIDCH = ' '
 EDGECH = '-'
 GHOSTCH_L = ['ᗣ', 'ᙁ', 'ᙉ', 'ᑛ', 'ᑜ', 'ᗩ']
-BIGCOINCH = 'Ø'  # make yellow
+BIGCOINCH = 'Ø'
 SMALLCOINCH = '·'
 PILLCH = '⦷'  # or θ (note italics)
 
