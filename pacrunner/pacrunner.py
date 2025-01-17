@@ -13,6 +13,14 @@ import pickle
 import argparse
 from pacrunner.sound import Sound
 from collections import namedtuple
+from enum import IntEnum, auto
+
+
+# ExitCodes
+class EC(IntEnum):
+    EXIT_SUCCESS = 0
+    EXIT_HORIZONTAL = auto()
+    EXIT_VERTICAL = auto()
 
 
 # consider config dataclass for accessing
@@ -21,7 +29,14 @@ from collections import namedtuple
 def gameloop(stdscr,
              start_mute,
              title_anim,
-             skip_splash):
+             skip_splash) -> int:
+    # check for screen too small
+    mh, mw = stdscr.getmaxyx()
+    if mh < (cst.PLAYWIN_Y_OFFSET + cst.PLAYWIN_H):
+        return EC.EXIT_VERTICAL
+    if mw < (100):
+        return EC.EXIT_HORIZONTAL
+
     install_dir = os.path.dirname(os.path.abspath(__file__))
     score_path = os.path.join(install_dir, 'sc.dat')
     if not os.path.exists(score_path):
@@ -47,21 +62,11 @@ def gameloop(stdscr,
     curses.curs_set(0)
     curses.start_color()
     curses.use_default_colors()
+    curses.set_escdelay(1)
     for i, color in enumerate(cst.COLOR_L):
         curses.init_pair(i + 1, color, -1)  # -1 for default background
-    # check for screen too small
-    mh, mw = stdscr.getmaxyx()
-    if mh < (cst.PLAYWIN_Y_OFFSET + cst.PLAYWIN_H):
-        stdscr.addstr('sorry, screen too small! (vertical)')  # this would be better as an exit code which determines a stderr message
-        stdscr.refresh()
-        time.sleep(3)
-        exit(1)
-    if mw < (100):
-        stdscr.addstr('sorry, screen too small! (horizontal)')
-        stdscr.refresh()
-        time.sleep(3)
-        exit(1)
-    curses.set_escdelay(1)
+
+    # set up game windows
     topwin = stdscr.subwin(cst.TITLE_H,
                            mw,
                            cst.TITLE_Y_OFFSET,
@@ -615,6 +620,8 @@ def gameloop(stdscr,
         # stdscr.refresh()
         tck.update()
 
+    return EC.EXIT_SUCCESS
+
 
 def cli():
     pr = argparse.ArgumentParser(prog='PacRunner',
@@ -633,9 +640,17 @@ def cli():
                     help='disable intro splash')
     args = pr.parse_args()
 
-    curses.wrapper(gameloop,
-                   args.mute,
-                   ~args.no_strobe,
-                   args.skip_dedication)
-    print('thanks for playing!')
-    sys.exit(0)
+    exit_code = curses.wrapper(gameloop,
+                               args.mute,
+                               ~args.no_strobe,
+                               args.skip_dedication)
+    match exit_code:
+        case EC.EXIT_HORIZONTAL:
+            print('sorry, screen is too small on the x axis - see help for details')
+        case EC.EXIT_VERTICAL:
+            print('sorry, screen is too small on the y axis - see help for details')
+        case EC.EXIT_SUCCESS:
+            print('thanks for playing!')
+        case _:
+            print('unknown return code!?')
+    sys.exit(exit_code)
