@@ -1,11 +1,19 @@
 # if this gets complicated, consider parent class, or composing move, draw, obj
 # abstract classes and so on
-from pacrunner import constants as cst
 from tickpy.ticker import ExtTicker
 import curses
 import random
 from random import sample
-from typing import Literal
+
+
+HEROOPENCH = 'ᗧ'
+HEROCLOSEDCH = 'ᗡ'
+GRIDCH = ' '
+EDGECH = '-'
+GHOSTCH_L = ['ᗣ', 'ᙁ', 'ᙉ', 'ᑛ', 'ᑜ', 'ᗩ']
+BIGCOINCH = 'Ø'
+SMALLCOINCH = '·'
+PILLCH = '⦷'  # or θ (note italics)
 
 
 class Edible:
@@ -32,7 +40,7 @@ class Pill:
         self._animblock = False
         self.y = init_y
         self.x = init_x
-        self.ch = cst.PILLCH
+        self.ch = PILLCH
         self.lx_bound = lx_bound
         self.rx_bound = rx_bound
         self._coll = cols
@@ -49,7 +57,7 @@ class Pill:
                             self.ch,
                             self._col)
 
-    def clear(self, repch=cst.GRIDCH):
+    def clear(self, repch=GRIDCH):
         self.__stdscr_ref.addch(self.y,
                             self.x,
                             repch)
@@ -93,7 +101,7 @@ class Coin:
         self.y = init_y
         self.x = init_x
         self.size = size
-        self.ch = cst.BIGCOINCH if size == 2 else cst.SMALLCOINCH
+        self.ch = BIGCOINCH if size == 2 else SMALLCOINCH
         self.attr = attr
 
     def draw(self,
@@ -106,13 +114,13 @@ class Coin:
                                 self.ch,
                                 self.attr)
 
-    def clear(self, repch = cst.GRIDCH):
+    def clear(self, repch = GRIDCH):
         self.__stdscr_ref.addch(self.y,
                                 self.x,
                                 repch)
 
     def collection(self):
-        self.ch = cst.GRIDCH
+        self.ch = GRIDCH
         self.collected = True
 
 
@@ -244,7 +252,7 @@ class SingleLineStrobe():
 
     def clear(self,
               stdscr,
-              repch = cst.GRIDCH):
+              repch = GRIDCH):
         for i, _ in enumerate(self.text):
             stdscr.addch(self.y,
                          self.x + i,
@@ -310,7 +318,7 @@ class Player:
                  animfreq: int = 24):
         self.__stdscr_ref = stdscr
         self.__ticker_ref = ticker
-        self.anim_ch = (cst.HEROCLOSEDCH, cst.HEROOPENCH)
+        self.anim_ch = (HEROCLOSEDCH, HEROOPENCH)
         self.anim_freq = animfreq
         self.__anim_block = False
         self._togidx = 0
@@ -354,13 +362,13 @@ class Player:
                      self.attr)
 
     def clear(self,
-              repch = cst.GRIDCH):
+              repch = GRIDCH):
         self.__stdscr_ref.addch(self.py,
                                 self.px,
                                 repch)
 
     def clearall(self,
-                 repch = cst.GRIDCH):
+                 repch = GRIDCH):
         self.__stdscr_ref.addch(self.py,
                                 self.px,
                                 repch)
@@ -403,7 +411,7 @@ class Ghost:
                  rx_bound,
                  uy_bound=0,
                  lx_bound=0):
-        self._anims = sample(cst.GHOSTCH_L, 2)
+        self._anims = sample(GHOSTCH_L, 2)
         self._togidx = 0
         self.ch = self._anims[self._togidx]
         self.__stdscr = stdscr
@@ -441,7 +449,7 @@ class Ghost:
                             (curses.color_pair(self.col) if not self._edible_ref.eatme else curses.color_pair(self._edible_col) |
                              curses.A_BOLD))
 
-    def clear(self, repch=cst.GRIDCH):
+    def clear(self, repch=GRIDCH):
         self.__stdscr.addch(self.y,
                             self.x,
                             repch)

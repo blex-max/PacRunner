@@ -15,13 +15,12 @@ from pacrunner import artfunc as af
 
 #################
 #~~ CONSTANTS ~~#
-################
+#################
 # ExitCodes
 class EC(IntEnum):
     EXIT_SUCCESS = 0
     EXIT_HORIZONTAL = auto()
     EXIT_VERTICAL = auto()
-
 
 # FSM states
 class S(IntEnum):
@@ -46,34 +45,7 @@ TITLE_XMAG = af.art_width(TITLE)
 TITLE_LINES: list = af.art2lines(TITLE)
 TITLE_YMAG = len(TITLE_LINES)
 
-YOMYOM = r"""
-_____.___.             _____.___.             ._.
-\__  |   | ____   _____\__  |   | ____   _____| |
- /   |   |/  _ \ /     \/   |   |/  _ \ /     | |
- \____   (  <_> |  Y Y  \____   (  <_> |  Y Y  \|
- / ______|\____/|__|_|  / ______|\____/|__|_|  __
- \/                   \/\/                   \/\/
-"""
-
-POWERPILL = r"""
-__________                              __________ .__ .__   .__  ._.
-\______   \ ____ __  _  __  ____ _______\______   \|__||  |  |  | | |
- |     ___//  _ \\ \/ \/ /_/ __ \\_  __ \|     ___/|  ||  |  |  | | |
- |    |   (  <_> )\     / \  ___/ |  | \/|    |    |  ||  |__|  |__\|
- |____|    \____/  \/\_/   \___  >|__|   |____|    |__||____/|____/__
-                               \/                                  \/
-"""
-
-HEROOPENCH = 'ᗧ'
-HEROCLOSEDCH = 'ᗡ'
-GRIDCH = ' '
-EDGECH = '-'
-GHOSTCH_L = ['ᗣ', 'ᙁ', 'ᙉ', 'ᑛ', 'ᑜ', 'ᗩ']
-BIGCOINCH = 'Ø'
-SMALLCOINCH = '·'
-PILLCH = '⦷'  # or θ (note italics)
-
-COLOR_L = [curses.COLOR_RED,
+COLORS = [curses.COLOR_RED,
            curses.COLOR_YELLOW,
            curses.COLOR_GREEN,
            curses.COLOR_CYAN,
@@ -81,13 +53,10 @@ COLOR_L = [curses.COLOR_RED,
            curses.COLOR_MAGENTA,
            curses.COLOR_WHITE]
 
-TITLE_Y_OFFSET = 0
-
-
 TRACK_XMAG = 38
 TRACK_YMAG = 3
 TITLE_PLAYWIN_PAD = 2
-PLAYWIN_Y_OFFSET = TITLE_Y_OFFSET + TITLE_YMAG + TITLE_PLAYWIN_PAD
+PLAYWIN_Y_OFFSET = TITLE_YMAG + TITLE_PLAYWIN_PAD
 PLAYWIN_VMAR = 3  # inclusive margin
 PLAYWIN_YMAG = TRACK_YMAG + (PLAYWIN_VMAR * 2)
 PLAYWIN_XMAR = 6
@@ -96,14 +65,33 @@ HERO_REL_X = 4
 TRACK_REL_Y_BOUND = TRACK_YMAG // 2
 TRACK_DY_BOUND = PLAYWIN_YO + TRACK_REL_Y_BOUND
 TRACK_UY_BOUND = PLAYWIN_YO - TRACK_REL_Y_BOUND
-
-
 PLAYWIN_XMAG = TRACK_XMAG + PLAYWIN_XMAR*2
 TRACK_RX_BOUND = PLAYWIN_XMAG - PLAYWIN_XMAR
 TRACK_LEN = (PLAYWIN_XMAG - (2 * PLAYWIN_XMAR))
 INIT_PLAYER_X = PLAYWIN_XMAR + 8
+PLAYWIN_XC = int(PLAYWIN_XMAG // 2) + 1
 
+# difficulty/speed
+DIFF_PERIOD = 600  # higher is slower
+INIT_DIFF_MULTIPLIER = 1600
+DIFF_MOD = 55
+INIT_ITEM_SPEED = 60
 
+# strings
+STARTUP1 = 'for-elvira'
+STARTUP2 = '<3'
+MENU_PLAY = 'play! (y)'
+MENU_SCORES = 'scores! (s)'
+MENU_MANUAL = 'instructions (i)'
+MOVE_INST = '↑↓←→ - move!'
+COIN_INST = '{}{} - get the coins!'.format(vo.SMALLCOINCH, vo.BIGCOINCH)
+GHOST_INST = 'ᗣ - avoid the ghosts!'
+PILL_INST = '⦷ - now eat the ghosts!'
+PILL_IND = 'powerpill!'
+
+###############
+#~~ PROGRAM ~~#
+###############
 # consider config dataclass for accessing
 # system-specific (i.e. assinged with in main) constants
 # when separating into sub windows and so on
@@ -123,9 +111,9 @@ def gameloop(stdscr,
     if not os.path.exists(score_path):
         high_scores = [('---', 0)] * 6
         with open(score_path, 'wb') as f:
-            pickle.dump(high_scores, f)
+            pickle.dump(high_scores, f)  # should disable scoring if region not writeable, and display a quick message, perhaps grey out the option
     else:
-        with open(score_path, 'rb') as f:
+        with open(score_path, 'rb') as f:  # try except as above
             high_scores: list[tuple[str, int]] = pickle.load(f)
         high_scores = high_scores[0:6]
     high_scores = sorted(high_scores, key=lambda x: x[1], reverse=True)
@@ -144,13 +132,11 @@ def gameloop(stdscr,
     curses.start_color()
     curses.use_default_colors()
     curses.set_escdelay(1)
-    for i, color in enumerate(COLOR_L):
+    for i, color in enumerate(COLORS):
         curses.init_pair(i + 1, color, -1)  # -1 for default background
-
-    # set up game windows
     titlewin = stdscr.subwin(TITLE_YMAG,
                              mw,
-                             TITLE_Y_OFFSET,
+                             0,
                              0)
     playwin = stdscr.subwin(PLAYWIN_YMAG,
                             PLAYWIN_XMAG,
@@ -164,15 +150,6 @@ def gameloop(stdscr,
     msgbox.attrset(curses.color_pair(4))
 
     # init game loop
-    # init vars
-    # have an 'corner-of-eye difficulty (I like having it in a second screen region)'
-    # implement yom yom every milestone
-    # implement powerpill! on power pill
-    diff_period = 600  # higher is slower
-    init_diff_multiplier = 1600
-    diff_mod = 55
-    init_item_speed = 60
-
     tck = ExtTicker(0.01)
     ghosts = []
     coins = []
@@ -180,9 +157,6 @@ def gameloop(stdscr,
     powerup = vo.Edible()
     powerup_time = 0
     run = True
-    # breakpoint()
-    # try alternative track animations as this might be too distracting
-    # like moving - space - space
     upper_track = vo.SingleLineStrobe('─' * (PLAYWIN_XMAG - (PLAYWIN_XMAR * 2)),
                                       ticker=tck,
                                       animfreq=8,
@@ -200,7 +174,7 @@ def gameloop(stdscr,
     main_title = vo.MultiLineStrobe(TITLE_LINES,
                                     ticker=tck,
                                     animfreq=5,
-                                    normal_draw_y=TITLE_Y_OFFSET,
+                                    normal_draw_y=0,
                                     normal_draw_x=((mw // 2) - (TITLE_XMAG // 2)),
                                     color_offset=0,
                                     color_wrap=10)
@@ -212,28 +186,15 @@ def gameloop(stdscr,
                                        color_offset=3,
                                        color_wrap=5,
                                        default_attr=curses.A_UNDERLINE)
-    # game loop
-    state: S = S.STARTUP  # should be intro
+    state: S = S.STARTUP
     score = 0
     startup_finished = 0  # for quickstart, 1
     intro_finished = 0
     bell_played = 0
-    startup1 = 'for-elvira'
-    startup2 = '<3'
-    menu_play = 'play! (y)'
-    # menu_diff = 'difficulty: 100 (←→)'
-    menu_scores = 'scores! (s)'
-    menu_manual = 'instructions (i)'
-    flip_mute = start_mute
     mute = 0
+    flip_mute = start_mute
     name: str = '???'
     init_game = 1
-    move_inst = '↑↓←→ - move!'
-    coin_inst = '{}{} - get the coins!'.format(SMALLCOINCH, BIGCOINCH)
-    ghost_inst = 'ᗣ - avoid the ghosts!'
-    pill_inst = '⦷ - now eat the ghosts!'
-    pill_ind = 'powerpill!'
-    pw_cntpos = int(PLAYWIN_XMAG // 2) + 1
     while run:
         if startup_finished:
             stdscr.addstr(PLAYWIN_Y_OFFSET + PLAYWIN_YMAG + 1, (mw // 2) - (PLAYWIN_XMAG // 2), 'sound: {} (m) '.format('off' if mute else 'on'), curses.color_pair(7))
@@ -270,9 +231,9 @@ def gameloop(stdscr,
         match state:
             case S.STARTUP:
                 stdscr.refresh()  # necessary for other machines???? weird
-                stdscr.addstr(int(mh // 2), int(mw // 2) - 1 - int(len(startup1) // 2), startup1, curses.color_pair(7))
+                stdscr.addstr(int(mh // 2), int(mw // 2) - 1 - int(len(STARTUP1) // 2), STARTUP1, curses.color_pair(7))
                 if tck.counter > 200:
-                    stdscr.addstr(int(mh // 2), int(mw // 2) + int(len(startup1) // 2), startup2, curses.color_pair(7))
+                    stdscr.addstr(int(mh // 2), int(mw // 2) + int(len(STARTUP1) // 2), STARTUP2, curses.color_pair(7))
                     if not bell_played:
                         sb.pill.play()
                         bell_played = 1
@@ -286,10 +247,10 @@ def gameloop(stdscr,
             case S.MENU:
                 main_title.color_wrap = 10
                 main_title.strobe(titlewin)
-                playwin.addstr(1, pw_cntpos - int(len(menu_play) // 2), menu_play, curses.color_pair(7))
-                # playwin.addstr(2, pw_cntpos - int(len(menu_diff) // 2) - 2, menu_diff, curses.color_pair(7))  # LR arrows
-                playwin.addstr(2, pw_cntpos - int(len(menu_scores) // 2), menu_scores, curses.color_pair(7))
-                playwin.addstr(3, pw_cntpos - int(len(menu_manual) // 2), menu_manual, curses.color_pair(7))
+                playwin.addstr(1, PLAYWIN_XC - int(len(MENU_PLAY) // 2), MENU_PLAY, curses.color_pair(7))
+                # playwin.addstr(2, PLAYWIN_XC - int(len(menu_diff) // 2) - 2, menu_diff, curses.color_pair(7))  # LR arrows
+                playwin.addstr(2, PLAYWIN_XC - int(len(MENU_SCORES) // 2), MENU_SCORES, curses.color_pair(7))
+                playwin.addstr(3, PLAYWIN_XC - int(len(MENU_MANUAL) // 2), MENU_MANUAL, curses.color_pair(7))
                 playwin.addstr(0, 2, 'score: {}'.format(score), curses.color_pair(7))
                 c = stdscr.getch()
                 match c:
@@ -302,27 +263,27 @@ def gameloop(stdscr,
                     case curses.KEY_RIGHT:
                         pass
                     case 121: # y
-                        playwin.addstr(1, pw_cntpos - int(len(menu_play) // 2), GRIDCH * len(menu_play))
-                        # playwin.addstr(2, pw_cntpos - int(len(menu_diff) // 2) - 2, GRIDCH * len(menu_diff))
-                        playwin.addstr(2, pw_cntpos - int(len(menu_scores) // 2), GRIDCH * len(menu_scores))
-                        playwin.addstr(3, pw_cntpos - int(len(menu_manual) // 2), GRIDCH * len(menu_manual))
+                        playwin.addstr(1, PLAYWIN_XC - int(len(MENU_PLAY) // 2), vo.GRIDCH * len(MENU_PLAY))
+                        # playwin.addstr(2, PLAYWIN_XC - int(len(menu_diff) // 2) - 2, vo.GRIDCH * len(menu_diff))
+                        playwin.addstr(2, PLAYWIN_XC - int(len(MENU_SCORES) // 2), vo.GRIDCH * len(MENU_SCORES))
+                        playwin.addstr(3, PLAYWIN_XC - int(len(MENU_MANUAL) // 2), vo.GRIDCH * len(MENU_MANUAL))
                         playwin.refresh()
                         main_title.color_wrap = 6
                         playwin.box()
                         init_game = 1
                         state = S.GAME  # state transition
                     case 115:  # s
-                        playwin.addstr(1, pw_cntpos - int(len(menu_play) // 2), GRIDCH * len(menu_play))
-                        # playwin.addstr(2, pw_cntpos - int(len(menu_diff) // 2) - 2, GRIDCH * len(menu_diff))
-                        playwin.addstr(2, pw_cntpos - int(len(menu_scores) // 2), GRIDCH * len(menu_scores))
-                        playwin.addstr(3, pw_cntpos - int(len(menu_manual) // 2), GRIDCH * len(menu_manual))
+                        playwin.addstr(1, PLAYWIN_XC - int(len(MENU_PLAY) // 2), vo.GRIDCH * len(MENU_PLAY))
+                        # playwin.addstr(2, PLAYWIN_XC - int(len(menu_diff) // 2) - 2, vo.GRIDCH * len(menu_diff))
+                        playwin.addstr(2, PLAYWIN_XC - int(len(MENU_SCORES) // 2), vo.GRIDCH * len(MENU_SCORES))
+                        playwin.addstr(3, PLAYWIN_XC - int(len(MENU_MANUAL) // 2), vo.GRIDCH * len(MENU_MANUAL))
                         playwin.refresh()
                         state = S.SCORES
                     case 105:  # instructions
-                        playwin.addstr(1, pw_cntpos - int(len(menu_play) // 2), GRIDCH * len(menu_play))
-                        # playwin.addstr(2, pw_cntpos - int(len(menu_diff) // 2) - 2, GRIDCH * len(menu_diff))
-                        playwin.addstr(2, pw_cntpos - int(len(menu_scores) // 2), GRIDCH * len(menu_scores))
-                        playwin.addstr(3, pw_cntpos - int(len(menu_manual) // 2), GRIDCH * len(menu_manual))
+                        playwin.addstr(1, PLAYWIN_XC - int(len(MENU_PLAY) // 2), vo.GRIDCH * len(MENU_PLAY))
+                        # playwin.addstr(2, PLAYWIN_XC - int(len(menu_diff) // 2) - 2, vo.GRIDCH * len(menu_diff))
+                        playwin.addstr(2, PLAYWIN_XC - int(len(MENU_SCORES) // 2), vo.GRIDCH * len(MENU_SCORES))
+                        playwin.addstr(3, PLAYWIN_XC - int(len(MENU_MANUAL) // 2), vo.GRIDCH * len(MENU_MANUAL))
                         playwin.refresh()  # unnecessary refresh?
                         state = S.MANUAL
                     case _:
@@ -347,10 +308,10 @@ def gameloop(stdscr,
                     )
                     # perhaps it's more fun to be able to jump back in at the same difficulty...
                     # maybe a run could consist of 3 lives?
-                    diff_multiplier = init_diff_multiplier
+                    diff_multiplier = INIT_DIFF_MULTIPLIER
                     ghost_spawn_period = int(diff_multiplier // 4)
                     coin_spawn_period = int(diff_multiplier // 7)
-                    item_speed = init_item_speed
+                    item_speed = INIT_ITEM_SPEED
                     init_game = 0
 
                 # strobe title and edges
@@ -359,13 +320,13 @@ def gameloop(stdscr,
                 lower_track.strobe(playwin)
                 playwin.addstr(0, 2, 'score: {}'.format(score), curses.color_pair(7))
 
-                if tck.cmod(diff_period):
+                if tck.cmod(DIFF_PERIOD):
                     if diff_multiplier > 300:
-                        diff_multiplier = diff_multiplier - diff_mod
+                        diff_multiplier = diff_multiplier - DIFF_MOD
                         ghost_spawn_period = int(diff_multiplier // 4) if ghost_spawn_period > 100 else 100
                         # tck.cmod(ghost_spawn_period)  # unnecessary?
                         coin_spawn_period = int(diff_multiplier // 7) if coin_spawn_period > 50 else 50
-                if tck.cmod(diff_period * 2):
+                if tck.cmod(DIFF_PERIOD * 2):
                     item_speed = item_speed - 1 if item_speed > 30 else 30
                     for coin in coins:
                         coin._mvfreq = item_speed
@@ -376,7 +337,7 @@ def gameloop(stdscr,
                                                powerup,
                                                rnd.randint(10, 40),  # lower = faster
                                                rnd.randint(29, 33),
-                                               rnd.choice(COLOR_L),
+                                               rnd.choice(COLORS),
                                                [5,7],
                                                rnd.randint(TRACK_UY_BOUND,
                                                            TRACK_DY_BOUND),
@@ -476,7 +437,7 @@ def gameloop(stdscr,
                     if p.y == pacman.y and p.x == pacman.x:
                         sb.pill.play()
                         powerup.eatme = True
-                        playwin.addstr(0, PLAYWIN_XMAG - len(pill_ind) - 2, pill_ind, curses.color_pair(7))
+                        playwin.addstr(0, PLAYWIN_XMAG - len(PILL_IND) - 2, PILL_IND, curses.color_pair(7))
                         # 12s, plus some random element to keep you on your toes
                         powerup_time = tck.counter + 1200 + rnd.randint(-200, 200)
                         p.clear()
@@ -485,7 +446,7 @@ def gameloop(stdscr,
 
                 if tck.counter > powerup_time:
                     if powerup.eatme:
-                        playwin.addstr(0, PLAYWIN_XMAG - len(pill_ind) - 2, '─'*len(pill_ind), curses.color_pair(4))
+                        playwin.addstr(0, PLAYWIN_XMAG - len(PILL_IND) - 2, '─'*len(PILL_IND), curses.color_pair(4))
                     powerup.eatme = False
 
                 # usr input
@@ -674,11 +635,11 @@ def gameloop(stdscr,
 
             case S.MANUAL:
                 main_title.strobe(titlewin)
-                playwin.addstr(2, pw_cntpos - int(len(move_inst) // 2), move_inst, curses.color_pair(7))
-                playwin.addstr(3, pw_cntpos - int(len(coin_inst) // 2), coin_inst, curses.color_pair(7))
-                playwin.addstr(4, pw_cntpos - int(len(ghost_inst) // 2), ghost_inst, curses.color_pair(7))
-                playwin.addstr(5, pw_cntpos - int(len(pill_inst) // 2), pill_inst, curses.color_pair(7))
-                playwin.addstr(7, pw_cntpos - int(3), '(o): ≡←', curses.color_pair(7))
+                playwin.addstr(2, PLAYWIN_XC - int(len(MOVE_INST) // 2), MOVE_INST, curses.color_pair(7))
+                playwin.addstr(3, PLAYWIN_XC - int(len(COIN_INST) // 2), COIN_INST, curses.color_pair(7))
+                playwin.addstr(4, PLAYWIN_XC - int(len(GHOST_INST) // 2), GHOST_INST, curses.color_pair(7))
+                playwin.addstr(5, PLAYWIN_XC - int(len(PILL_INST) // 2), PILL_INST, curses.color_pair(7))
+                playwin.addstr(7, PLAYWIN_XC - int(3), '(o): ≡←', curses.color_pair(7))
                 c = stdscr.getch()
                 match c:
                     case 27:  # ESC
